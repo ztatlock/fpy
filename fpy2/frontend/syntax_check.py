@@ -190,16 +190,16 @@ class SyntaxCheckInstance(AstVisitor):
                     env = self._visit(stmt, (env, False))
                 case Return():
                     if not is_top:
-                        raise FPySyntaxError(f'return statement must be at the top-level')
+                        raise FPySyntaxError('return statement must be at the top-level')
                     if i != len(block.stmts) - 1:
-                        raise FPySyntaxError(f'return statement must be at the end of the function definition')
+                        raise FPySyntaxError('return statement must be at the end of the function definition')
                     env = self._visit(stmt, (env, False))
                     has_return = True
                 case _:
                     raise NotImplementedError('unreachable', stmt)
 
         if is_top and not has_return:
-            raise FPySyntaxError(f'must have a return statement at the top-level')
+            raise FPySyntaxError('must have a return statement at the top-level')
         return env
 
     def _visit_function(self, func, ctx: _Ctx):

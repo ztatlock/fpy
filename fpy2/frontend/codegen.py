@@ -434,7 +434,7 @@ class _IRCodegenInstance(AstVisitor):
             ctx[arg.name] = arg.name
             args.append(ir.Argument(arg.name, ir.AnyType()))
         e, _ = self._visit(func.body, ctx)
-        return ir.Function(func.name, args, e, ir.AnyType()) 
+        return ir.Function(func.name, args, e, ir.AnyType(), func.ctx) 
 
 
 class IRCodegen:

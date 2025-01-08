@@ -35,6 +35,7 @@ def fpy(*args, **kwargs):
         parser = Parser(sourcename, source, start_line)
         ast = parser.parse()
         assert isinstance(ast, Function), "must be a function"
+        ast.ctx = kwargs.copy()
 
         # analyze and lower to the IR
         SyntaxCheck.analyze(ast)

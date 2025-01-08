@@ -401,4 +401,4 @@ cores: list[Function] = [
 comp = FPCoreCompiler()
 for core in cores:
     fpc = comp.compile(core)
-    print(fpc.sexp)
+    print(fpc)

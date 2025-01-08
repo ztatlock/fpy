@@ -27,3 +27,6 @@ Issues = "https://github.com/bksaiki/fpy/issues"
 
 [tool.mypy]
 disable_error_code = ["import-untyped"]
+
+[tool.ruff.lint]
+ignore = ["F401", "F403", "F405"]

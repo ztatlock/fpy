@@ -349,13 +349,23 @@ class FPCoreCompileInstance(ReduceVisitor):
                     raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
         return e
 
-    def _visit_function(self, func, ctx):
+    def _visit_function(self, func, ctx: Optional[fpc.Expr]):
         args = [self._compile_arg(arg) for arg in func.args]
-        # TODO: parse data
-
-        # compile body
         body = self._visit(func.body, ctx)
-        return fpc.FPCore(ident=func.name, inputs=args, e=body)
+        # TODO: parse data
+        ident = func.name
+        name = func.ctx.get('name', None)
+        pre = func.ctx.get('pre', None)
+        spec = func.ctx.get('spec', None)
+        return fpc.FPCore(
+            inputs=args,
+            e=body,
+            props=func.ctx.copy(),
+            ident=ident,
+            name=name,
+            pre=pre,
+            spec=spec
+        )
 
     # override for typing hint
     def _visit(self, e, ctx) -> fpc.Expr:

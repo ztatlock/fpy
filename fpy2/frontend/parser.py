@@ -16,8 +16,10 @@ def _ipow(expr: Expr, n: int, loc: Location):
     elif n == 1:
         return expr
     else:
-        f = lambda lhs, rhs: BinaryOp(BinaryOpKind.MUL, lhs, rhs, loc)
-        return reduce(f, [expr for _ in range(n)])
+        e = BinaryOp(BinaryOpKind.MUL, expr, expr, loc)
+        for _ in range(2, n):
+            e = BinaryOp(BinaryOpKind.MUL, e, expr, loc)
+        return e
 
 _unary_table = {
     'fabs': UnaryOpKind.FABS,
