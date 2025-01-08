@@ -30,12 +30,15 @@ def fpy(*args, **kwargs):
         sourcename = inspect.getabsfile(func)
         lines, start_line = inspect.getsourcelines(func)
         source = ''.join(lines)
-        
+
         # parse the source as an FPy function
         parser = Parser(sourcename, source, start_line)
         ast = parser.parse()
         assert isinstance(ast, Function), "must be a function"
         ast.ctx = kwargs.copy()
+
+        # add global namespace
+        ast.globals = func.__globals__
 
         # analyze and lower to the IR
         SyntaxCheck.analyze(ast)

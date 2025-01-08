@@ -556,13 +556,15 @@ class Function(IR):
     body: Block
     ty: IRType
     ctx: dict[str, Any]
+    globals: dict[str, Any]
 
     def __init__(self,
         name: str,
         args: list[Argument],
         body: Block,
         ty: IRType,
-        ctx: dict[str, Any]
+        ctx: dict[str, Any],
+        globals: dict[str, Any]
     ):
         super().__init__()
         self.name = name
@@ -570,3 +572,4 @@ class Function(IR):
         self.body = body
         self.ty = ty
         self.ctx = ctx.copy()
+        self.globals = globals

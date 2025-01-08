@@ -407,4 +407,4 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_function(self, func, ctx: Any):
         body = self._visit(func.body, ctx)
-        return Function(func.name, func.args, body, func.ty, func.ctx)
+        return Function(func.name, func.args, body, func.ty, func.ctx, func.globals)
