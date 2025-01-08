@@ -2,7 +2,7 @@
 This module contains the intermediate representation (IR).
 """
 
-from typing import Self, Sequence
+from typing import Self, Sequence, Any
 
 from .types import IRType
 from ..utils import CompareOp
@@ -555,15 +555,18 @@ class Function(IR):
     args: list[Argument]
     body: Block
     ty: IRType
+    ctx: dict[str, Any]
 
     def __init__(self,
         name: str,
         args: list[Argument],
         body: Block,
-        ty: IRType
+        ty: IRType,
+        ctx: dict[str, Any]
     ):
         super().__init__()
         self.name = name
         self.args = args
         self.body = body
         self.ty = ty
+        self.ctx = ctx.copy()

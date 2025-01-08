@@ -474,6 +474,7 @@ class Function(Ast):
     name: str
     args: list[Argument]
     body: Block
+    ctx: dict[str, Any]
 
     def __init__(
         self,
@@ -486,3 +487,4 @@ class Function(Ast):
         self.name = name
         self.args = args
         self.body = body
+        self.ctx = {}
