@@ -2,11 +2,11 @@
 
 from typing import Optional
 
+import titanfp.fpbench.fpcast as fpc 
+
 from ..passes import *
 from ..ir import *
 from ..utils import Gensym
-
-from ...fpbench import fpcast as fpc
 
 _op_table = {
     '+': fpc.Add,
