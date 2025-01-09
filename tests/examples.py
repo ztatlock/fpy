@@ -1,7 +1,5 @@
-from .backend import FPCoreCompiler
-from .frontend.decorator import fpy
-from .ir import Function
-from .typing import *
+from fpy2 import fpy, Function, FPCoreCompiler, Interpreter
+from fpy2.typing import *
 
 ### Simple tests
 
@@ -250,7 +248,7 @@ def test_for3():
     cite=['hamming-1987', 'herbie-2015'],
     fpbench_domain='textbook',
 )
-def nmse3_1(x: Real) -> Real:
+def nmse3_1(x: Real):
     return sqrt(x + 1) - sqrt(x)
 
 # TODO: precondition
@@ -402,3 +400,5 @@ comp = FPCoreCompiler()
 for core in cores:
     fpc = comp.compile(core)
     print(fpc)
+
+nmse3_1(1.0)

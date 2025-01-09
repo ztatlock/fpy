@@ -2,7 +2,9 @@
 This module contains the intermediate representation (IR).
 """
 
-from typing import Self, Sequence, Any
+from typing import Any, Optional, Self, Sequence
+
+from titanfp.arithmetic.evalctx import EvalCtx
 
 from .types import IRType
 from ..utils import CompareOp
@@ -573,3 +575,8 @@ class Function(IR):
         self.ty = ty
         self.ctx = ctx.copy()
         self.globals = globals
+
+    def __call__(self, *args, ctx: Optional[EvalCtx] = None):
+        from ..eval import Interpreter # get around circular import (oof)
+        rt = Interpreter()
+        rt.eval(self, args, ctx=ctx)
