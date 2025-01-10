@@ -9,17 +9,18 @@ authors = [
   { name="Brett Saiki", email="bsaiki@cs.washington.edu" }
 ]
 description = "An embedded DSL for numerical computing"
-license = {file = "LICENSE"}
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-  "titanfp==0.1.0"
-]
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["titanfp==0.1.0"]
+
+[project.optional-dependencies]
+dev = ["mypy", "ruff", "build", "twine"]
 
 [project.urls]
 Homepage = "https://github.com/bksaiki/fpy"
