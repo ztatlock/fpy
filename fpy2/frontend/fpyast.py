@@ -42,6 +42,12 @@ class ScalarType(Enum):
     REAL = 1
     BOOL = 2
 
+class AnyTypeAnn(TypeAnn):
+    """FPy AST: any type annotation"""
+
+    def __init__(self, loc: Location):
+        super().__init__(loc)
+
 class ScalarTypeAnn(TypeAnn):
     """FPy AST: scalar type annotation"""
     kind: ScalarType

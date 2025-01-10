@@ -443,10 +443,11 @@ class Parser:
 
         args: list[Argument] = []
         for arg in pos_args:
-            if arg.annotation is None:
-                raise FPyParserError(loc, 'FPy requires a type annotation', arg, f)
             name = '_' if arg.arg is None else arg.arg
-            ty = self._parse_type_annotation(arg.annotation)
+            if arg.annotation is None:
+                ty = AnyTypeAnn(loc)
+            else:
+                ty = self._parse_type_annotation(arg.annotation)
             args.append(Argument(name, ty, loc))
 
         block = self._parse_statements(f.body)
