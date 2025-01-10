@@ -200,7 +200,7 @@ class Floor(UnaryExpr):
     name: str = 'floor'
 
 class Nearbyint(UnaryExpr):
-    """FPy node: nearby-integer"""
+    """FPy node: nearest integer"""
     name: str = 'nearbyint'
 
 class Round(UnaryExpr):
@@ -579,4 +579,4 @@ class Function(IR):
     def __call__(self, *args, ctx: Optional[EvalCtx] = None):
         from ..eval import Interpreter # get around circular import (oof)
         rt = Interpreter()
-        rt.eval(self, args, ctx=ctx)
+        return rt.eval(self, args, ctx=ctx)

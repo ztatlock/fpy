@@ -83,7 +83,7 @@ def test_ife3():
   y = 2.0
   z = 3.0
   t = 4.0
-  return 1.0 if (x + 1.0) < (y < 2.0) < (z + 3.0) < (t + 4.0) else 0.0
+  return 1.0 if (x + 1.0) < (y + 2.0) < (z + 3.0) < (t + 4.0) else 0.0
 
 @fpy(name='Test if expression (4/6)')
 def test_ife4():
@@ -353,7 +353,7 @@ def whetsone1(n: int):
 
 ### Compile loop
 
-cores: list[Function] = [
+cores: list = [
     # Tests
     test_simple1,
     test_simple2,
@@ -398,7 +398,7 @@ cores: list[Function] = [
 
 comp = FPCoreCompiler()
 for core in cores:
+    args = [1.0 for _ in range(len(core.args))]
+    print(core.name, core(*args))
+    assert isinstance(core, Function)
     fpc = comp.compile(core)
-    print(fpc)
-
-nmse3_1(1.0)
