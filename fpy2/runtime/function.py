@@ -13,40 +13,37 @@ class Function:
     This object is created by the `@fpy` decorator and represents
     a function in the FPy runtime.
     """
-    func: FunctionDef
+    ir: FunctionDef
     env: dict[str, Any]
     rt: Optional['BaseInterpreter']
 
     def __init__(
         self,
-        func: FunctionDef,
+        ir: FunctionDef,
         env: dict[str, Any],
         rt: Optional['BaseInterpreter'] = None
     ):
-        self.func = func
+        self.ir = ir
         self.env = env
         self.rt = rt
 
     def __call__(self, *args, ctx: Optional[EvalCtx] = None):
         rt = get_default_interpreter() if self.rt is None else self.rt
-        return rt.eval(self.func, args, ctx=ctx)
+        return rt.eval(self, args, ctx=ctx)
 
     def with_rt(self, rt: 'BaseInterpreter'):
         if not isinstance(rt, BaseInterpreter):
             raise TypeError(f'expected BaseInterpreter, got {rt}')
-        return Function(self.func, self.env, rt)
+        return Function(self.ir, self.env, rt)
 
 
 class BaseInterpreter:
-    """
-    Abstract base class for FPy interpreters.
-
-    Evaluates `Function` objects.
-    """
+    """Abstract base class for FPy interpreters."""
 
     @abstractmethod
-    def eval(self, func: FunctionDef, args, ctx: Optional[EvalCtx] = None):
+    def eval(self, func: Function, args, ctx: Optional[EvalCtx] = None):
         raise NotImplementedError('virtual method')
+
 
 _default_interpreter: Optional[BaseInterpreter] = None
 

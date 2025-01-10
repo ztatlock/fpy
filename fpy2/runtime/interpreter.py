@@ -9,6 +9,7 @@ from titanfp.titanic.digital import Digital
 from titanfp.titanic.ndarray import NDArray
 import titanfp.titanic.gmpmath as gmpmath
 
+from .function import BaseInterpreter, Function
 from ..ir import *
 
 ScalarVal = bool | Digital
@@ -81,8 +82,12 @@ _method_table: dict[str, Callable[..., Any]] = {
     'signbit': MPMF.signbit,
 }
 
-class Interpreter(ReduceVisitor):
-    """Interpreter for FPy programs."""
+class _Interpreter(ReduceVisitor):
+    """Single-use interpreter"""
+    env: dict[str, Any]
+
+    def __init__(self, env: dict[str, Any]):
+        self.env = env
 
     # TODO: what are the semantics of arguments
     def _arg_to_mpmf(self, arg: Any, ctx: EvalCtx):
@@ -97,12 +102,12 @@ class Interpreter(ReduceVisitor):
 
     def eval(self,
         func: FunctionDef,
-        arg_seq: Sequence[Any],
+        args: Sequence[Any],
         ctx: Optional[EvalCtx] = None
     ):
         if not isinstance(func, FunctionDef):
             raise TypeError(f'Expected Function, got {type(func)}')
-        args = tuple(arg_seq)
+        args = tuple(args)
         if len(args) != len(func.args):
             raise TypeError(f'Expected {len(func.args)} arguments, got {len(args)}')
         if ctx is None:
@@ -352,3 +357,25 @@ class Interpreter(ReduceVisitor):
     # override typing hint
     def _visit_statement(self, stmt, ctx: EvalCtx) -> EvalCtx:
         return super()._visit_statement(stmt, ctx)
+
+
+class Interpreter(BaseInterpreter):
+    """
+    Standard interpreter for FPy programs.
+
+    Programs are evaluated using the Titanic backend (`titanfp`).
+    Booleans are Python `bool` values, real numbers are Titanic `MPMF` values,
+    and tensors are Titanic `NDArray` values.
+
+    All operations are correctly-rounded.
+    """
+
+    def eval(
+        self,
+        func: Function,
+        args: Sequence[Any],
+        ctx: Optional[EvalCtx] = None
+    ):
+        if not isinstance(func, Function):
+            raise TypeError(f'Expected Function, got {func}')
+        return _Interpreter(func.env).eval(func.ir, args, ctx)
