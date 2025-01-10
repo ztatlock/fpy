@@ -9,9 +9,9 @@ _DefSet = set[str]
 
 class DefinitionAnalysisInstance(AstVisitor):
     """Single-use definition analyzer."""
-    func: Function
+    func: FunctionDef
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         self.func = func
 
     def analyze(self):
@@ -104,8 +104,8 @@ class DefinitionAnalysis:
     analysis_name = 'def_vars'
 
     @staticmethod
-    def analyze(func: Function):
+    def analyze(func: FunctionDef):
         """Analyze the defined variables in a function."""
-        if not isinstance(func, Function):
+        if not isinstance(func, FunctionDef):
             raise TypeError(f'expected a Function, got {func}')
         DefinitionAnalysisInstance(func).analyze()

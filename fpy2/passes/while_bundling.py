@@ -19,14 +19,14 @@ For expressions, this context maps variables to an expression.
 
 class _WhileBundlingInstance(DefaultTransformVisitor):
     """Single-use instance of the WhileBundling pass."""
-    func: Function
+    func: FunctionDef
     gensym: Gensym
 
-    def __init__(self, func: Function, names: set[str]):
+    def __init__(self, func: FunctionDef, names: set[str]):
         self.func = func
         self.gensym = Gensym(*names)
 
-    def apply(self) -> Function:
+    def apply(self) -> FunctionDef:
         return self._visit(self.func, {})
     
     def _visit_var(self, e: Var, ctx: _CtxType):
@@ -102,7 +102,7 @@ class WhileBundling:
     """
 
     @staticmethod
-    def apply(func: Function, names: Optional[set[str]] = None) -> Function:
+    def apply(func: FunctionDef, names: Optional[set[str]] = None) -> FunctionDef:
         if names is None:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())

@@ -8,9 +8,9 @@ _LiveSet = set[str]
 class LiveVarAnalysisInstance(AstVisitor):
     """Single-use live variable analyzer"""
 
-    def analyze(self, func: Function):
+    def analyze(self, func: FunctionDef):
         """Analyze the live variables in a function."""
-        if not isinstance(func, Function):
+        if not isinstance(func, FunctionDef):
             raise TypeError(f'expected a Function, got {func}')
         self._visit(func, set())
 
@@ -141,8 +141,8 @@ class LiveVarAnalysis:
     analysis_name = 'live_vars'
 
     @staticmethod
-    def analyze(func: Function):
+    def analyze(func: FunctionDef):
         """Analyze the live variables in a function."""
-        if not isinstance(func, Function):
+        if not isinstance(func, FunctionDef):
             raise TypeError(f'expected a Function, got {func}')
         LiveVarAnalysisInstance().analyze(func)

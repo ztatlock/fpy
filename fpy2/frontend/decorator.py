@@ -11,12 +11,13 @@ from titanfp.arithmetic.evalctx import EvalCtx
 
 from .codegen import IRCodegen
 from .definition import DefinitionAnalysis
-from .fpyast import Function
+from .fpyast import FunctionDef
 from .live_vars import LiveVarAnalysis
 from .parser import Parser
 from .syntax_check import SyntaxCheck
 
 from ..passes import VerifyIR
+from ..runtime import Function
 
 P = ParamSpec('P')
 R = TypeVar('R')
@@ -54,13 +55,10 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     # parse the source as an FPy function
     parser = Parser(sourcename, source, start_line)
     ast = parser.parse()
-    assert isinstance(ast, Function), "must be a function"
+    assert isinstance(ast, FunctionDef), "must be a function"
 
     # add context information
     ast.ctx = { **kwargs }
-
-    # add global namespace
-    ast.globals = func.__globals__
 
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)
@@ -68,4 +66,6 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     LiveVarAnalysis.analyze(ast)
     ir = IRCodegen.lower(ast)
     VerifyIR.check(ir)
-    return ir
+
+    # wrap the IR in a Function
+    return Function(ir, func.__globals__)

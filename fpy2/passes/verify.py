@@ -10,10 +10,10 @@ class InvalidIRError(Exception):
 # TODO: type check
 class _VerifyPassInstance(DefaultVisitor):
     """Single instance of the `VerifyPass`."""
-    func: Function
+    func: FunctionDef
     types: dict[str, IRType]
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         self.func = func
         self.types = {}
 
@@ -172,5 +172,5 @@ class VerifyIR:
     """
 
     @staticmethod
-    def check(func: Function):
+    def check(func: FunctionDef):
         _VerifyPassInstance(func).check()

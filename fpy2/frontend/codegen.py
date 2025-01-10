@@ -15,14 +15,14 @@ _CtxType = dict[str, str]
 
 class _IRCodegenInstance(AstVisitor):
     """Instance of lowering an AST to an IR."""
-    func: Function
+    func: FunctionDef
     gensym: Gensym
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         self.func = func
         self.gensym = Gensym()
 
-    def lower(self) -> ir.Function:
+    def lower(self) -> ir.FunctionDef:
         return self._visit(self.func, {})
 
     def _visit_var(self, e, ctx: _CtxType):
@@ -434,12 +434,12 @@ class _IRCodegenInstance(AstVisitor):
             ctx[arg.name] = arg.name
             args.append(ir.Argument(arg.name, ir.AnyType()))
         e, _ = self._visit(func.body, ctx)
-        return ir.Function(func.name, args, e, ir.AnyType(), func.ctx, func.globals) 
+        return ir.FunctionDef(func.name, args, e, ir.AnyType(), func.ctx)
 
 
 class IRCodegen:
     """Lowers a FPy AST to FPy IR."""
     
     @staticmethod
-    def lower(f: Function) -> ir.Function:
+    def lower(f: FunctionDef) -> ir.FunctionDef:
         return _IRCodegenInstance(f).lower()

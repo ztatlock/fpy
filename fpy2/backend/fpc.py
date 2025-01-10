@@ -81,10 +81,10 @@ def _nary_mul(args: list[fpc.Expr]):
 
 class FPCoreCompileInstance(ReduceVisitor):
     """Compilation instance from FPy to FPCore"""
-    func: Function
+    func: FunctionDef
     gensym: Gensym
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         uses = DefineUse().analyze(func)
         self.func = func
         self.gensym = Gensym(*uses.keys())
@@ -374,7 +374,7 @@ class FPCoreCompileInstance(ReduceVisitor):
 class FPCoreCompiler:
     """Compiler from FPy IR to FPCore"""
 
-    def compile(self, func: Function) -> fpc.FPCore:
+    def compile(self, func: FunctionDef) -> fpc.FPCore:
         func = ForBundling.apply(func)
         func = WhileBundling.apply(func)
         func = SimplifyIf.apply(func)

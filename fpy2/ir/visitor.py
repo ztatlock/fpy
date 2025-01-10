@@ -116,7 +116,7 @@ class BaseVisitor(ABC):
     # Functions
 
     @abstractmethod
-    def _visit_function(self, func: Function, ctx: Any):
+    def _visit_function(self, func: FunctionDef, ctx: Any):
         """Visitor for `fpyast.Function`."""
         raise NotImplementedError('virtual method')
 
@@ -171,7 +171,7 @@ class BaseVisitor(ABC):
             case _:
                 raise NotImplementedError('no visitor method for', stmt)
 
-    def _visit(self, e: Expr | Stmt | Block | Function, ctx: Any):
+    def _visit(self, e: Expr | Stmt | Block | FunctionDef, ctx: Any):
         """Dynamic dispatch for all primary `AST` nodes."""
         match e:
             case Expr():
@@ -180,7 +180,7 @@ class BaseVisitor(ABC):
                 return self._visit_statement(e, ctx)
             case Block():
                 return self._visit_block(e, ctx)
-            case Function():
+            case FunctionDef():
                 return self._visit_function(e, ctx)
             case _:
                 raise NotImplementedError('no visitor method for', e)
@@ -273,7 +273,7 @@ class DefaultVisitor(Visitor):
         for stmt in block.stmts:
             self._visit(stmt, ctx)
 
-    def _visit_function(self, func: Function, ctx: Any):
+    def _visit_function(self, func: FunctionDef, ctx: Any):
         self._visit(func.body, ctx)
 
 
@@ -407,4 +407,4 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_function(self, func, ctx: Any):
         body = self._visit(func.body, ctx)
-        return Function(func.name, func.args, body, func.ty, func.ctx, func.globals)
+        return FunctionDef(func.name, func.args, body, func.ty, func.ctx)

@@ -432,7 +432,7 @@ class Parser:
         """Parse a list of Python statements."""
         return Block([self._parse_statement(s) for s in stmts])
 
-    def _parse_function(self, f: ast.FunctionDef) -> Function:
+    def _parse_function(self, f: ast.FunctionDef) -> FunctionDef:
         """Parse a Python function definition."""
         loc = self._parse_location(f)
         pos_args = f.args.posonlyargs + f.args.args
@@ -445,10 +445,10 @@ class Parser:
         for arg in pos_args:
             name = '_' if arg.arg is None else arg.arg
             if arg.annotation is None:
-                ty = AnyTypeAnn(loc)
+                args.append(Argument(name, AnyTypeAnn(loc), loc))
             else:
                 ty = self._parse_type_annotation(arg.annotation)
-            args.append(Argument(name, ty, loc))
+                args.append(Argument(name, ty, loc))
 
         block = self._parse_statements(f.body)
-        return Function(f.name, args, block, loc)
+        return FunctionDef(f.name, args, block, loc)

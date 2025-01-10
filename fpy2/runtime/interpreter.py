@@ -96,11 +96,11 @@ class Interpreter(ReduceVisitor):
             raise NotImplementedError(f'unknown argument type {arg}')
 
     def eval(self,
-        func: Function,
+        func: FunctionDef,
         arg_seq: Sequence[Any],
         ctx: Optional[EvalCtx] = None
     ):
-        if not isinstance(func, Function):
+        if not isinstance(func, FunctionDef):
             raise TypeError(f'Expected Function, got {type(func)}')
         args = tuple(arg_seq)
         if len(args) != len(func.args):

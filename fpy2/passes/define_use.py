@@ -4,11 +4,11 @@ from ..ir import *
 
 class _DefineUseInstance(DefaultVisitor):
     """Per-IR instance of definition-use analysis"""
-    func: Function
+    func: FunctionDef
     uses: dict[str, set[Var | PhiNode]]
     done: bool
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         self.func = func
         self.uses = {}
         self.done = False
@@ -77,7 +77,7 @@ class _DefineUseInstance(DefaultVisitor):
         for phi in stmt.phis:
             self.uses[phi.rhs].add(phi)
 
-    def _visit_function(self, func: Function, ctx):
+    def _visit_function(self, func: FunctionDef, ctx):
         for arg in func.args:
             self.uses[arg.name] = set()
         self._visit(func.body, ctx)
@@ -93,5 +93,5 @@ class DefineUse:
     analysis_name = 'define_use'
 
     @staticmethod
-    def analyze(func: Function):
+    def analyze(func: FunctionDef):
         return _DefineUseInstance(func).analyze()

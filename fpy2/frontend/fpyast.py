@@ -475,7 +475,7 @@ class Argument(Ast):
         self.name = name
         self.type = type
 
-class Function(Ast):
+class FunctionDef(Ast):
     """FPy AST: function definition"""
     name: str
     args: list[Argument]

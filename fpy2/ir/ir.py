@@ -2,9 +2,7 @@
 This module contains the intermediate representation (IR).
 """
 
-from typing import Any, Optional, Self, Sequence
-
-from titanfp.arithmetic.evalctx import EvalCtx
+from typing import Any, Self, Sequence
 
 from .types import IRType
 from ..utils import CompareOp
@@ -551,14 +549,13 @@ class Argument(IR):
         self.name = name
         self.ty = ty
 
-class Function(IR):
+class FunctionDef(IR):
     """FPy IR: function"""
     name: str
     args: list[Argument]
     body: Block
     ty: IRType
     ctx: dict[str, Any]
-    globals: dict[str, Any]
 
     def __init__(self,
         name: str,
@@ -566,7 +563,6 @@ class Function(IR):
         body: Block,
         ty: IRType,
         ctx: dict[str, Any],
-        globals: dict[str, Any]
     ):
         super().__init__()
         self.name = name
@@ -574,9 +570,3 @@ class Function(IR):
         self.body = body
         self.ty = ty
         self.ctx = ctx.copy()
-        self.globals = globals
-
-    def __call__(self, *args, ctx: Optional[EvalCtx] = None):
-        from ..eval import Interpreter # get around circular import (oof)
-        rt = Interpreter()
-        return rt.eval(self, args, ctx=ctx)

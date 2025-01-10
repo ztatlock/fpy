@@ -1,4 +1,4 @@
-from fpy2 import fpy, Function, FPCoreCompiler, Interpreter
+from fpy2 import fpy, FunctionDef, FPCoreCompiler, Interpreter
 from fpy2.typing import *
 
 ### Simple tests
@@ -400,5 +400,5 @@ comp = FPCoreCompiler()
 for core in cores:
     args = [1.0 for _ in range(len(core.args))]
     print(core.name, core(*args))
-    assert isinstance(core, Function)
+    assert isinstance(core, FunctionDef)
     fpc = comp.compile(core)

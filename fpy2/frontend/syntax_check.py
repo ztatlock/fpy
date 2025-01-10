@@ -42,9 +42,9 @@ _Ctx = tuple[_Env, bool]
 
 class SyntaxCheckInstance(AstVisitor):
     """Single-use instance of syntax checking"""
-    func: Function
+    func: FunctionDef
 
-    def __init__(self, func: Function):
+    def __init__(self, func: FunctionDef):
         self.func = func
 
     def analyze(self):
@@ -234,7 +234,7 @@ class SyntaxCheck:
     """
 
     @staticmethod
-    def analyze(func: Function):
-        if not isinstance(func, Function):
+    def analyze(func: FunctionDef):
+        if not isinstance(func, FunctionDef):
             raise TypeError(f'expected a Function, got {func}')
         SyntaxCheckInstance(func).analyze()

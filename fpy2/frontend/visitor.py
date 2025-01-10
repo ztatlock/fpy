@@ -99,7 +99,7 @@ class AstVisitor(ABC):
     # Function
 
     @abstractmethod
-    def _visit_function(self, func: Function, ctx: Any) -> Any:
+    def _visit_function(self, func: FunctionDef, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
 
     #######################################################
@@ -162,7 +162,7 @@ class AstVisitor(ABC):
                 return self._visit_statement(e, ctx)
             case Block():
                 return self._visit_block(e, ctx)
-            case Function():
+            case FunctionDef():
                 return self._visit_function(e, ctx)
             case _:
                 raise NotImplementedError(f'no visitor method for {e}')

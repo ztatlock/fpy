@@ -10,10 +10,10 @@ from ..utils import Gensym
 
 class _SimplifyIfInstance(DefaultTransformVisitor):
     """Single-use instance of the SimplifyIf pass."""
-    func: Function
+    func: FunctionDef
     gensym: Gensym
 
-    def __init__(self, func: Function, names: set[str]):
+    def __init__(self, func: FunctionDef, names: set[str]):
         self.func = func
         self.gensym = Gensym(*names)
     
@@ -99,7 +99,7 @@ class SimplifyIf:
     """
 
     @staticmethod
-    def apply(func: Function, names: Optional[set[str]] = None):
+    def apply(func: FunctionDef, names: Optional[set[str]] = None):
         if names is None:
             uses = DefineUse.analyze(func)
             names = (uses.keys())
