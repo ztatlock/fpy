@@ -76,6 +76,13 @@ class DefinitionAnalysisInstance(AstVisitor):
         block_defs = self._visit(stmt.body, ctx)
         return ctx | block_defs
 
+    def _visit_context(self, stmt, ctx: _DefSet):
+        if stmt.name is not None:
+            ctx = ctx | { stmt.name }
+        return self._visit(stmt.body, ctx)
+
+        raise NotImplementedError
+
     def _visit_return(self, stmt, ctx: _DefSet):
         return set(ctx)
 

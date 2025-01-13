@@ -415,6 +415,16 @@ class _IRCodegenInstance(AstVisitor):
                 new_ctx[name] = ctx[name]
         return s, new_ctx
 
+    def _visit_context(self, stmt, ctx: _CtxType):
+        if stmt.name is not None:
+            t = self.gensym.fresh(stmt.name)
+            ctx = { **ctx, stmt.name: t }
+            body, new_ctx = self._visit(stmt.body, ctx)
+            return ir.ContextStmt(t, stmt.props, body), new_ctx
+        else:
+            body, new_ctx = self._visit(stmt.body, ctx)
+            return ir.ContextStmt(None, stmt.props, body), new_ctx
+
     def _visit_return(self, stmt, ctx: _CtxType):
         e = self._visit(stmt.expr, ctx)
         return ir.Return(e), set()

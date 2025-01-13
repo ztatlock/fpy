@@ -43,12 +43,18 @@ _Ctx = tuple[_Env, bool]
 class SyntaxCheckInstance(AstVisitor):
     """Single-use instance of syntax checking"""
     func: FunctionDef
+    rets: set[Location]
 
     def __init__(self, func: FunctionDef):
         self.func = func
+        self.rets = set()
 
     def analyze(self):
         self._visit(self.func, (_Env(), False))
+        if len(self.rets) == 0:
+            raise FPySyntaxError('function has no return statement')
+        elif len(self.rets) > 1:
+            raise FPySyntaxError('function has multiple return statements')
 
     def _visit_var(self, e, ctx: _Ctx):
         env, _ = ctx
@@ -169,16 +175,18 @@ class SyntaxCheckInstance(AstVisitor):
         env = env.extend(stmt.var)
         body_env = self._visit(stmt.body, (env, False))
         return env.merge(body_env)
-    
-    def _visit_context(self, stmt, ctx):
-        raise NotImplementedError
+
+    def _visit_context(self, stmt, ctx: _Ctx):
+        env, is_top = ctx
+        if stmt.name is not None:
+            env = env.extend(stmt.name)
+        return self._visit_block(stmt.body, (env, is_top))
 
     def _visit_return(self, stmt, ctx: _Ctx):
         return self._visit(stmt.expr, ctx)
 
     def _visit_block(self, block, ctx: _Ctx):
         env, is_top = ctx
-        has_return = False
         for i, stmt in enumerate(block.stmts):
             match stmt:
                 case VarAssign():
@@ -192,19 +200,17 @@ class SyntaxCheckInstance(AstVisitor):
                 case ForStmt():
                     env = self._visit(stmt, (env, False))
                 case ContextStmt():
-                    env = self._visit(stmt, (env, False))
+                    env = self._visit(stmt, (env, is_top))
                 case Return():
                     if not is_top:
                         raise FPySyntaxError('return statement must be at the top-level')
                     if i != len(block.stmts) - 1:
                         raise FPySyntaxError('return statement must be at the end of the function definition')
                     env = self._visit(stmt, (env, False))
-                    has_return = True
+                    self.rets.add(stmt.loc)
                 case _:
                     raise NotImplementedError('unreachable', stmt)
 
-        if is_top and not has_return:
-            raise FPySyntaxError('must have a return statement at the top-level')
         return env
 
     def _visit_function(self, func, ctx: _Ctx):

@@ -17,6 +17,24 @@ class Location:
     end_line: int
     end_column: int
 
+    def __key(self):
+        return (
+            self.source,
+            self.start_line,
+            self.start_column,
+            self.end_line,
+            self.end_column
+        )
+
+    def __hash__(self):
+        return hash(self.__key())
+
+    def __eq__(self, other):
+        if not isinstance(other, Location):
+            return False
+        return self.__key() == other.__key()
+
+
 class Ast(ABC):
     """FPy AST: abstract base class for all AST nodes."""
     loc: Location

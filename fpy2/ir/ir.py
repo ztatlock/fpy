@@ -2,7 +2,7 @@
 This module contains the intermediate representation (IR).
 """
 
-from typing import Any, Self, Sequence
+from typing import Any, Optional, Self, Sequence
 
 from .types import IRType
 from ..utils import CompareOp
@@ -530,6 +530,18 @@ class ForStmt(Stmt):
         self.iterable = iterable
         self.body = body
         self.phis = phis
+
+class ContextStmt(Stmt):
+    """FPy IR: context statement"""
+    name: Optional[str]
+    props: dict[str, Any]
+    body: Block
+
+    def __init__(self, name: Optional[str], props: dict[str, Any], body: Block):
+        super().__init__()
+        self.name = name
+        self.props = props.copy()
+        self.body = body
 
 class Return(Stmt):
     """FPy IR: return statement"""
