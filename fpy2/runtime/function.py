@@ -34,6 +34,14 @@ class Function:
         rt = get_default_interpreter() if self.rt is None else self.rt
         return rt.eval(self, args, ctx=ctx)
 
+    @property
+    def args(self):
+        return self.ir.args
+
+    @property
+    def name(self):
+        return self.ir.name
+
     def with_rt(self, rt: 'BaseInterpreter'):
         if not isinstance(rt, BaseInterpreter):
             raise TypeError(f'expected BaseInterpreter, got {rt}')

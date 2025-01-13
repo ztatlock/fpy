@@ -145,6 +145,14 @@ class _VerifyPassInstance(DefaultVisitor):
             ctx -= { new }
         return ctx
 
+    def _visit_context(self, stmt, ctx: _CtxType):
+        if stmt.name is not None:
+            if stmt.name in self.types:
+                raise InvalidIRError(f'reassignment of variable {stmt.name}')
+            self.types[stmt.name] = AnyType()
+            ctx += stmt.name
+        return self._visit(stmt.body, ctx)
+
     def _visit_block(self, block, ctx: _CtxType):
         for stmt in block.stmts:
             if isinstance(stmt, Return):

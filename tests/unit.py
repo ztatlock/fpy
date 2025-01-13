@@ -241,10 +241,25 @@ def test_for3():
         y += 2 * i
     return x, y
 
-@fpy(name='Test context statement (1/1)')
-def test_context():
+@fpy(name='Test context statement (1/3)')
+def test_context1():
     with Context():
         return 0
+
+@fpy(name='Test context statement (2/3)')
+def test_context2():
+    x = 1
+    with Context(precision='binary32'):
+        return x + 1
+
+@fpy(name='Test context statement (3/3)')
+def test_context3(x: Real, y: Real):
+    with Context(precision='binary32'):
+        with Context(round='toPositive'):
+            t0 = x + y
+        with Context(round='toNegative'):
+            t1 = x - y
+        return t0 - t1
 
 ### Examples
 
@@ -393,6 +408,8 @@ cores: list = [
     test_for1,
     test_for2,
     test_for3,
+    test_context1,
+    test_context2,
     # Examples
     nmse3_1,
     instCurrent,
@@ -403,7 +420,9 @@ cores: list = [
 
 comp = FPCoreCompiler()
 for core in cores:
-    args = [1.0 for _ in range(len(core.args))]
-    print(core.name, core(*args))
+    fn = core
     assert isinstance(core, Function)
+    args = [1.0 for _ in range(len(core.args))]
+    print(core.name, fn(*args))
     fpc = comp.compile(core.ir)
+    print(fpc)

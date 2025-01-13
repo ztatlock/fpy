@@ -4,7 +4,6 @@ This module contains the parser for the FPy language.
 
 import ast
 
-from functools import reduce
 from typing import cast
 
 from .fpyast import *
@@ -261,6 +260,19 @@ class Parser:
         if not isinstance(e.func, ast.Name):
             raise FPyParserError(loc, 'Unsupported call expression', e)
         return e.func.id
+    
+    def _parse_constant(self, e: ast.Constant, loc: Location):
+        # TODO: reparse all constants to get exact value
+        match e.value:
+            case int():
+                return Integer(e.value, loc)
+            case float():
+                if e.value.is_integer():
+                    return Integer(int(e.value), loc)
+                else:
+                    return Decnum(str(e.value), loc)
+            case _:
+                raise FPyParserError(loc, 'Unsupported constant', e)
 
     def _parse_expr(self, e: ast.expr) -> Expr:
         """Parse a Python expression."""
@@ -269,16 +281,7 @@ class Parser:
             case ast.Name():
                 return Var(e.id, loc)
             case ast.Constant():
-                # TODO: reparse all constants to get exact value
-                if isinstance(e.value, int):
-                    return Integer(e.value, loc)
-                elif isinstance(e.value, float):
-                    if e.value.is_integer():
-                        return Integer(int(e.value), loc)
-                    else:
-                        return Decnum(str(e.value), loc)
-                else:
-                    raise FPyParserError(loc, 'Unsupported constant', e)
+                return self._parse_constant(e, loc)
             case ast.UnaryOp():
                 return self._parse_unaryop(e)
             case ast.BinOp():
@@ -355,6 +358,19 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'FPy expects an identifier', gen.target, gen)
 
+    def _parse_contextdata(self, e: ast.expr):
+        loc = self._parse_location(e)
+        match e:
+            case ast.Constant():
+                if isinstance(e.value, str):
+                    return e.value
+                else:
+                    return self._parse_constant(e, loc)
+            case ast.List() | ast.Tuple():
+                return [self._parse_contextdata(elt) for elt in e.elts]
+            case _:
+                raise FPyParserError(loc, 'unexpected FPy context data', e)
+
     def _parse_contextname(self, item: ast.withitem):
         var = item.optional_vars
         match var:
@@ -377,12 +393,11 @@ class Parser:
                 if e.args != []:
                     raise FPyParserError(loc, 'FPy with statements do not expect arguments', e)
                 # TODO: what data is allowed?
-                props: list[tuple[str, Any]] = []
+                props: dict[str, Any] = {}
                 for kwd in e.keywords:
                     if kwd.arg is None:
                         raise FPyParserError(loc, '`Context` only takes keyword arguments', e)
-                    prop = (kwd.arg, self._parse_expr(kwd.value))
-                    props.append(prop)
+                    props[kwd.arg] = self._parse_contextdata(kwd.value)
                 return props
             case _:
                 raise FPyParserError(loc, 'FPy expects an identifier', e, item)

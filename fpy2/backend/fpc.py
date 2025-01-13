@@ -323,19 +323,18 @@ class FPCoreCompileInstance(ReduceVisitor):
         while_binding = (name, fpc.Var(init), body)
         return fpc.Let([(tuple_id, iterable)], fpc.For([dim_binding], [while_binding], ctx))
 
+    def _visit_context(self, stmt, ctx):
+        body = self._visit(stmt.body, ctx)
+        return fpc.Ctx(stmt.props, body)
+
     def _visit_return(self, stmt, ctx) -> fpc.Expr:
         return self._visit(stmt.expr, ctx)
 
     def _visit_block(self, block, ctx: Optional[fpc.Expr]):
         if ctx is None:
-            # entering from the top-level
-            ret_stmt = block.stmts[-1]
-            if not isinstance(ret_stmt, Return):
-                raise FPCoreCompileError('blocks must have a return statement at the end')
-            e = self._visit(ret_stmt, ctx)
+            e = self._visit(block.stmts[-1], None)
             stmts = block.stmts[:-1]
         else:
-            # entering from a nested block
             e = ctx
             stmts = block.stmts
 
@@ -347,6 +346,7 @@ class FPCoreCompileInstance(ReduceVisitor):
                     raise FPCoreCompileError('return statements must be at the end of blocks')
                 case _:
                     raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
+
         return e
 
     def _visit_function(self, func, ctx: Optional[fpc.Expr]):

@@ -100,6 +100,11 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_context(self, stmt: ContextStmt, ctx: Any):
+        """Visitor method for `ContextStmt` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_return(self, stmt: Return, ctx: Any):
         """Visitor method for `Return` nodes."""
         raise NotImplementedError('virtual method')
@@ -166,6 +171,8 @@ class BaseVisitor(ABC):
                 return self._visit_while_stmt(stmt, ctx)
             case ForStmt():
                 return self._visit_for_stmt(stmt, ctx)
+            case ContextStmt():
+                return self._visit_context(stmt, ctx)
             case Return():
                 return self._visit_return(stmt, ctx)
             case _:
@@ -264,6 +271,9 @@ class DefaultVisitor(Visitor):
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
         self._visit(stmt.iterable, ctx)
+        self._visit(stmt.body, ctx)
+
+    def _visit_context(self, stmt: ContextStmt, ctx: Any):
         self._visit(stmt.body, ctx)
 
     def _visit_return(self, stmt: Return, ctx: Any):
@@ -386,6 +396,10 @@ class DefaultTransformVisitor(TransformVisitor):
         body = self._visit(stmt.body, ctx)
         phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
         return ForStmt(stmt.var, stmt.ty, iterable, body, phis)
+    
+    def _visit_context(self, stmt, ctx):
+        body = self._visit(stmt.body, ctx)
+        return ContextStmt(stmt.name, stmt.props.copy(), body)
 
     def _visit_return(self, stmt, ctx: Any):
         return Return(self._visit(stmt.expr, ctx))

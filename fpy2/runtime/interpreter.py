@@ -340,6 +340,9 @@ class _Interpreter(ReduceVisitor):
 
         return ctx
 
+    def _visit_context(self, stmt, ctx: EvalCtx):
+        return self._visit(stmt.body, ctx)
+
     def _visit_return(self, stmt, ctx: EvalCtx):
         return self._visit(stmt.expr, ctx)
 
