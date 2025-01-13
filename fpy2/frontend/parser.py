@@ -355,6 +355,38 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'FPy expects an identifier', gen.target, gen)
 
+    def _parse_contextname(self, item: ast.withitem):
+        var = item.optional_vars
+        match var:
+            case None:
+                return None
+            case ast.Name():
+                return var.id
+            case _:
+                loc = self._parse_location(var)
+                raise FPyParserError(loc, '`Context` can only be optionally bound to an identifier`', var, item)
+    
+    def _parse_contextexpr(self, item: ast.withitem):
+        e = item.context_expr
+        loc = self._parse_location(e)
+        match e:
+            case ast.Call():
+                call_name = self._parse_call(e)
+                if call_name != 'Context':
+                    raise FPyParserError(loc, 'FPy with statements only expect `Context`', e)
+                if e.args != []:
+                    raise FPyParserError(loc, 'FPy with statements do not expect arguments', e)
+                # TODO: what data is allowed?
+                props: list[tuple[str, Any]] = []
+                for kwd in e.keywords:
+                    if kwd.arg is None:
+                        raise FPyParserError(loc, '`Context` only takes keyword arguments', e)
+                    prop = (kwd.arg, self._parse_expr(kwd.value))
+                    props.append(prop)
+                return props
+            case _:
+                raise FPyParserError(loc, 'FPy expects an identifier', e, item)
+
     def _parse_statement(self, stmt: ast.stmt) -> Stmt:
         """Parse a Python statement."""
         loc = self._parse_location(stmt)
@@ -425,6 +457,14 @@ class Parser:
                     raise FPyParserError(loc, 'Return statement must have value', stmt)
                 e = self._parse_expr(stmt.value)
                 return Return(e, loc)
+            case ast.With():
+                if len(stmt.items) != 1:
+                    raise FPyParserError(loc, 'FPy only supports with statements with a single item', stmt)
+                item = stmt.items[0]
+                name = self._parse_contextname(item)
+                props = self._parse_contextexpr(item)
+                block = self._parse_statements(stmt.body)
+                return ContextStmt(name, props, block, loc)
             case _:
                 raise NotImplementedError('statement is unsupported in FPy', stmt)
 

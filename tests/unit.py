@@ -1,4 +1,4 @@
-from fpy2 import fpy, FunctionDef, FPCoreCompiler, Interpreter
+from fpy2 import fpy, Function, FPCoreCompiler, Interpreter
 from fpy2.typing import *
 
 ### Simple tests
@@ -241,6 +241,11 @@ def test_for3():
         y += 2 * i
     return x, y
 
+@fpy(name='Test context statement (1/1)')
+def test_context():
+    with Context():
+        return 0
+
 ### Examples
 
 @fpy(
@@ -400,5 +405,5 @@ comp = FPCoreCompiler()
 for core in cores:
     args = [1.0 for _ in range(len(core.args))]
     print(core.name, core(*args))
-    assert isinstance(core, FunctionDef)
-    fpc = comp.compile(core)
+    assert isinstance(core, Function)
+    fpc = comp.compile(core.ir)

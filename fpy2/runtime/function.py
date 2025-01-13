@@ -27,6 +27,9 @@ class Function:
         self.env = env
         self.rt = rt
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(ir={self.ir}, ...)'
+
     def __call__(self, *args, ctx: Optional[EvalCtx] = None):
         rt = get_default_interpreter() if self.rt is None else self.rt
         return rt.eval(self, args, ctx=ctx)

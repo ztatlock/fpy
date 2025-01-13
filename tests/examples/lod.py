@@ -1,4 +1,4 @@
-from fpy2 import fpy
+from fpy2 import *
 
 from math import fabs, sqrt, log2
 
@@ -41,4 +41,4 @@ dxdv = -5.96046e-08
 dydu = -1.19209e-07
 dydv = 0.00173205
 
-print(lod_anisotropic(w * dxdu, h * dxdv, w * dydu, h * dydv, 16.0))
+lod_anisotropic(w * dxdu, h * dxdv, w * dydu, h * dydv, 16.0)

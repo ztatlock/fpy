@@ -448,6 +448,24 @@ class ForStmt(Stmt):
         self.iterable = iterable
         self.body = body
 
+class ContextStmt(Stmt):
+    """FPy AST: with statement"""
+    name: Optional[str]
+    props: dict[str, Any]
+    body: Block
+
+    def __init__(
+        self,
+        name: Optional[str],
+        props: dict[str, Any],
+        body: Block,
+        loc: Location
+    ):
+        super().__init__(loc)
+        self.props = props
+        self.name = name
+        self.body = body
+
 class Return(Stmt):
     """FPy AST: return statement"""
     expr: Expr

@@ -169,6 +169,9 @@ class SyntaxCheckInstance(AstVisitor):
         env = env.extend(stmt.var)
         body_env = self._visit(stmt.body, (env, False))
         return env.merge(body_env)
+    
+    def _visit_context(self, stmt, ctx):
+        raise NotImplementedError
 
     def _visit_return(self, stmt, ctx: _Ctx):
         return self._visit(stmt.expr, ctx)
@@ -187,6 +190,8 @@ class SyntaxCheckInstance(AstVisitor):
                 case WhileStmt():
                     env = self._visit(stmt, (env, False))
                 case ForStmt():
+                    env = self._visit(stmt, (env, False))
+                case ContextStmt():
                     env = self._visit(stmt, (env, False))
                 case Return():
                     if not is_top:
