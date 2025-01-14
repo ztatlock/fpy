@@ -1,4 +1,4 @@
-from fpy2 import fpy, Function, FPCoreCompiler, Interpreter
+from fpy2 import fpy, Function, FPCoreCompiler
 from fpy2.typing import *
 
 ### Simple tests
@@ -65,6 +65,36 @@ def test_let2():
     a = 1.0
     b = 1.0
     return a + b
+
+@fpy(name='Test augassign (1/5)')
+def test_augassign1():
+    x = 1.0
+    x += 1.0
+    return x
+
+@fpy(name='Test augassign (2/5)')
+def test_augassign2():
+    x = 1.0
+    x -= 1.0
+    return x
+
+@fpy(name='Test augassign (3/5)')
+def test_augassign3():
+    x = 1.0
+    x *= 2.0
+    return x
+
+@fpy(name='Test augassign (4/5)')
+def test_augassign4():
+    x = 1.0
+    x /= 2.0
+    return x
+
+@fpy(name='Test augassign (5/5)')
+def test_augassign5():
+    x = 1.0
+    x %= 2.0
+    return x
 
 @fpy(
   name='Test if expression (1/6)',
@@ -384,6 +414,11 @@ cores: list = [
     test_digits4,
     test_let1,
     test_let2,
+    test_augassign1,
+    test_augassign2,
+    test_augassign3,
+    test_augassign4,
+    test_augassign5,
     test_ife1,
     test_ife2,
     test_ife3,
@@ -410,6 +445,7 @@ cores: list = [
     test_for3,
     test_context1,
     test_context2,
+    test_context3,
     # Examples
     nmse3_1,
     instCurrent,

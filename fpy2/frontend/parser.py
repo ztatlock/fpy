@@ -402,26 +402,36 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'FPy expects an identifier', e, item)
 
+    def _parse_augassign(self, stmt: ast.AugAssign):
+        loc = self._parse_location(stmt)
+        if not isinstance(stmt.target, ast.Name):
+            raise FPyParserError(loc, 'Unsupported target in FPy', stmt)
+        name = stmt.target.id
+
+        match stmt.op:
+            case ast.Add():
+                op = BinaryOpKind.ADD
+            case ast.Sub():
+                op = BinaryOpKind.SUB
+            case ast.Mult():
+                op = BinaryOpKind.MUL
+            case ast.Div():
+                op = BinaryOpKind.DIV
+            case ast.Mod():
+                op = BinaryOpKind.FMOD
+            case _:
+                raise FPyParserError(loc, 'Unsupported operator-assignment in FPy', stmt)
+
+        value = self._parse_expr(stmt.value)
+        e = BinaryOp(op, Var(name, loc), value, loc)
+        return VarAssign(name, e, None, loc)
+
     def _parse_statement(self, stmt: ast.stmt) -> Stmt:
         """Parse a Python statement."""
         loc = self._parse_location(stmt)
         match stmt:
             case ast.AugAssign():
-                if not isinstance(stmt.target, ast.Name):
-                    raise FPyParserError(loc, 'Unsupported target in FPy', stmt)
-                name = stmt.target.id
-                value = self._parse_expr(stmt.value)
-                match stmt.op:
-                    case ast.Add():
-                        return VarAssign(name, BinaryOp(BinaryOpKind.ADD, Var(name, loc), value, loc), None, loc)
-                    case ast.Sub():
-                        return VarAssign(name, BinaryOp(BinaryOpKind.SUB, Var(name, loc), value, loc), None, loc)
-                    case ast.Mult():
-                        return VarAssign(name, BinaryOp(BinaryOpKind.MUL, Var(name, loc), value, loc), None, loc)
-                    case ast.Div():
-                        return VarAssign(name, BinaryOp(BinaryOpKind.DIV, Var(name, loc), value, loc), None, loc)
-                    case _:
-                        raise FPyParserError(loc, 'Unsupported operator-assignment in FPy', stmt)
+                return self._parse_augassign(stmt)
             case ast.AnnAssign():
                 if not isinstance(stmt.target, ast.Name):
                     raise FPyParserError(loc, 'Unsupported target in FPy', stmt)

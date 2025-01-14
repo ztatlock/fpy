@@ -340,7 +340,7 @@ class FPCoreCompileInstance(ReduceVisitor):
 
         for stmt in reversed(stmts):
             match stmt:
-                case VarAssign() | TupleAssign() | WhileStmt() | ForStmt():
+                case VarAssign() | TupleAssign() | WhileStmt() | ForStmt() | ContextStmt():
                     e = self._visit(stmt, e)
                 case Return():
                     raise FPCoreCompileError('return statements must be at the end of blocks')
