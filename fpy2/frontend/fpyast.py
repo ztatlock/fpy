@@ -326,12 +326,12 @@ class CompExpr(Expr):
 class RefExpr(Expr):
     """FPy AST: tuple indexing expression"""
     value: Expr
-    slice: Expr
+    slices: list[Expr]
 
-    def __init__(self, value: Expr, slice: Expr, loc: Location):
+    def __init__(self, value: Expr, slices: Sequence[Expr], loc: Location):
         super().__init__(loc)
         self.value = value
-        self.slice = slice
+        self.slices = list(slices)
 
 class IfExpr(Expr):
     """FPy AST: if expression"""

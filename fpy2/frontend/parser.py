@@ -260,7 +260,17 @@ class Parser:
         if not isinstance(e.func, ast.Name):
             raise FPyParserError(loc, 'Unsupported call expression', e)
         return e.func.id
-    
+
+    def _parse_slice(self, slice: ast.expr, e: ast.expr):
+        match slice:
+            case ast.slice():
+                loc = self._parse_location(e)
+                raise  FPyParserError(loc, 'Slices unsupported', e, slice)
+            case ast.Tuple():
+                return [self._parse_expr(s) for s in slice.elts]
+            case _:
+                return [self._parse_expr(slice)]
+
     def _parse_constant(self, e: ast.Constant, loc: Location):
         # TODO: reparse all constants to get exact value
         match e.value:
@@ -331,8 +341,8 @@ class Parser:
                 return CompExpr(vars, iterables, elt, loc)
             case ast.Subscript():
                 value = self._parse_expr(e.value)
-                slice = self._parse_expr(e.slice)
-                return RefExpr(value, slice, loc)
+                slices = self._parse_slice(e.slice, e)
+                return RefExpr(value, slices, loc)
             case ast.IfExp():
                 cond = self._parse_expr(e.test)
                 ift = self._parse_expr(e.body)

@@ -203,9 +203,9 @@ class FPCoreCompileInstance(ReduceVisitor):
         return fpc.Array(*[self._visit(c, ctx) for c in e.children])
 
     def _visit_ref_expr(self, e, ctx) -> fpc.Expr:
-        array = self._visit(e.array, ctx)
-        indices = [self._visit(c, ctx) for c in e.indices]
-        return fpc.Ref(array, *indices)
+        value = self._visit(e.value, ctx)
+        slices = [self._visit(s, ctx) for s in e.slices]
+        return fpc.Ref(value, *slices)
 
     def _visit_comp_expr(self, e, ctx) -> fpc.Expr:
         if len(e.vars) == 1:

@@ -81,7 +81,9 @@ class LiveVarAnalysisInstance(AstVisitor):
         return live
 
     def _visit_ref_expr(self, e, ctx):
-        live = self._visit(e.value, ctx) | self._visit(e.slice, ctx)
+        live = self._visit(e.value, ctx)
+        for s in e.slices:
+            live |= self._visit(s, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
         return live
 

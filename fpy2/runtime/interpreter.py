@@ -230,8 +230,21 @@ class _Interpreter(ReduceVisitor):
         return NDArray([self._visit(x, ctx) for x in e.children])
 
     def _visit_ref_expr(self, e, ctx: EvalCtx):
-        raise NotImplementedError
-    
+        value = self._visit(e.value, ctx)
+        if not isinstance(value, NDArray):
+            raise TypeError(f'expected a tensor, got {value}')
+        
+        slices: list[int] = []
+        for s in e.slices:
+            val = self._visit(s, ctx)
+            if not isinstance(val, Digital):
+                raise TypeError(f'expected a real number slice, got {val}')
+            if not val.is_integer():
+                raise TypeError(f'expected an integer slice, got {val}')
+            slices.append(int(val))
+
+        return value[slices]
+
     def _apply_comp(self, bindings: list[tuple[Expr, Expr]], elt: Expr, ctx: EvalCtx, elts: list[Any]):
         if bindings == []:
             elts.append(self._visit(elt, ctx))

@@ -236,8 +236,9 @@ class DefaultVisitor(Visitor):
             self._visit(c, ctx)
 
     def _visit_ref_expr(self, e: RefExpr, ctx: Any):
-        self._visit(e.array, ctx)
-        self._visit(e.slice, ctx)
+        self._visit(e.value, ctx)
+        for s in e.slices:
+            self._visit(s, ctx)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: Any):
         for iterable in e.iterables:
@@ -333,9 +334,9 @@ class DefaultTransformVisitor(TransformVisitor):
         return TupleExpr(*[self._visit(c, ctx) for c in e.children])
 
     def _visit_ref_expr(self, e, ctx):
-        array = self._visit(e.array, ctx)
-        indices = [self._visit(c, ctx) for c in e.indices]
-        return RefExpr(array, *indices)
+        value = self._visit(e.value, ctx)
+        slices = [self._visit(s, ctx) for s in e.slices]
+        return RefExpr(value, *slices)
 
     def _visit_comp_expr(self, e, ctx):
         iterables = [self._visit(iterable, ctx) for iterable in e.iterables]

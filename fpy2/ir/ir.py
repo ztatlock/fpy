@@ -365,7 +365,7 @@ class Compare(Expr):
     """FPy node: N-argument comparison (N >= 2)"""
     ops: list[CompareOp]
     children: list[Expr]
-        
+
     def __init__(self, ops: list[CompareOp], children: list[Expr]):
         if not isinstance(children, list) or len(children) < 2:
             raise TypeError('expected list of length >= 2', children)
@@ -397,13 +397,13 @@ class CompExpr(Expr):
 
 class RefExpr(Expr):
     """FPy node: ref expression"""
-    array: Expr
-    slice: Expr
+    value: Expr
+    slices: list[Expr]
 
-    def __init__(self, array: Expr, slice: Expr):
+    def __init__(self, value: Expr, *slices: Expr):
         super().__init__()
-        self.array = array
-        self.slice = slice
+        self.value = value
+        self.slices = list(slices)
 
 class IfExpr(Expr):
     """FPy node: if expression (ternary)"""
