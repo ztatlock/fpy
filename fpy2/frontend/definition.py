@@ -27,6 +27,9 @@ class DefinitionAnalysisInstance(AstVisitor):
     def _visit_integer(self, e, ctx):
         raise NotImplementedError('should not be called')
 
+    def _visit_constant(self, e, ctx):
+        raise NotImplementedError('should not be called')
+
     def _visit_unaryop(self, e, ctx):
         raise NotImplementedError('should not be called')
 

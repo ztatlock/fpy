@@ -34,6 +34,9 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_integer(self, e, ctx: _CtxType):
         return ir.Integer(e.val)
 
+    def _visit_constant(self, e, ctx: _CtxType):
+        return ir.Constant(e.val)
+
     def _visit_unaryop(self, e, ctx: _CtxType):
         match e.op:
             case UnaryOpKind.NEG:

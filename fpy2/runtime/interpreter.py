@@ -136,13 +136,16 @@ class _Interpreter(ReduceVisitor):
 
     def _visit_integer(self, e, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
+    
+    def _visit_constant(self, e, ctx: EvalCtx):
+        raise NotImplementedError('unknown constant', e.val)
 
     def _visit_digits(self, e, ctx: EvalCtx):
         x = gmpmath.compute_digits(e.m, e.e, e.b, prec=ctx.p)
         return MPMF._round_to_context(x, ctx)
 
     def _visit_unknown(self, e, ctx: EvalCtx):
-        raise NotImplementedError
+        raise NotImplementedError('unknown call', e)
 
     def _apply_method(self, e: NaryExpr, ctx: EvalCtx):
         fn = _method_table[e.name]

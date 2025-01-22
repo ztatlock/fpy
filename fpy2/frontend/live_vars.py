@@ -27,6 +27,10 @@ class LiveVarAnalysisInstance(AstVisitor):
         e.attribs[LiveVarAnalysis.analysis_name] = set()
         return set()
 
+    def _visit_constant(self, e, ctx) -> _LiveSet:
+        e.attribs[LiveVarAnalysis.analysis_name] = set()
+        return set()
+
     def _visit_unaryop(self, e, ctx) -> _LiveSet:
         live = self._visit(e.arg, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)

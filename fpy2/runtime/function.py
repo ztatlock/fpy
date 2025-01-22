@@ -2,9 +2,11 @@
 
 from abc import abstractmethod
 from typing import Any, Optional
+from titanfp.fpbench.fpcast import FPCore
 from titanfp.arithmetic.evalctx import EvalCtx
 
 from ..ir import FunctionDef
+from ..frontend.fpc import fpcore_to_fpy
 
 class Function:
     """
@@ -41,6 +43,13 @@ class Function:
     @property
     def name(self):
         return self.ir.name
+
+    @staticmethod
+    def from_fpcore(core: FPCore):
+        if not isinstance(core, FPCore):
+            raise TypeError(f'expected FPCore, got {core}')
+        ir = fpcore_to_fpy(core)
+        return Function(ir, {})
 
     def with_rt(self, rt: 'BaseInterpreter'):
         if not isinstance(rt, BaseInterpreter):

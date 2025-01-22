@@ -24,6 +24,10 @@ class AstVisitor(ABC):
     @abstractmethod
     def _visit_integer(self, e: Integer, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
+    
+    @abstractmethod
+    def _visit_constant(self, e: Constant, ctx: Any) -> Any:
+        raise NotImplementedError('virtual method')
 
     @abstractmethod
     def _visit_unaryop(self, e: UnaryOp, ctx: Any) -> Any:
@@ -122,6 +126,8 @@ class AstVisitor(ABC):
                 return self._visit_decnum(e, ctx)
             case Integer():
                 return self._visit_integer(e, ctx)
+            case Constant():
+                return self._visit_constant(e, ctx)
             case UnaryOp():
                 return self._visit_unaryop(e, ctx)
             case BinaryOp():

@@ -37,10 +37,10 @@ class Location:
 
 class Ast(ABC):
     """FPy AST: abstract base class for all AST nodes."""
-    loc: Location
+    loc: Optional[Location]
     attribs: dict[str, Any]
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         self.loc = loc
         self.attribs = {}
 
@@ -52,7 +52,7 @@ class Ast(ABC):
 class TypeAnn(Ast):
     """FPy AST: typing annotation"""
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         super().__init__(loc)
 
 class ScalarType(Enum):
@@ -63,14 +63,14 @@ class ScalarType(Enum):
 class AnyTypeAnn(TypeAnn):
     """FPy AST: any type annotation"""
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         super().__init__(loc)
 
 class ScalarTypeAnn(TypeAnn):
     """FPy AST: scalar type annotation"""
     kind: ScalarType
 
-    def __init__(self, kind: ScalarType, loc: Location):
+    def __init__(self, kind: ScalarType, loc: Optional[Location]):
         super().__init__(loc)
         self.kind = kind
 
@@ -78,33 +78,33 @@ class TupleTypeAnn(TypeAnn):
     """FPy AST: tuple type annotation"""
     elts: list[TypeAnn]
 
-    def __init__(self, elts: list[TypeAnn], loc: Location):
+    def __init__(self, elts: list[TypeAnn], loc: Optional[Location]):
         super().__init__(loc)
         self.elts = elts
 
 class Expr(Ast):
     """FPy AST: expression"""
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         super().__init__(loc)
 
 class Stmt(Ast):
     """FPy AST: statement"""
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         super().__init__(loc)
 
 class ValueExpr(Expr):
     """FPy Ast: terminal expression"""
 
-    def __init__(self, loc: Location):
+    def __init__(self, loc: Optional[Location]):
         super().__init__(loc)
 
 class Var(ValueExpr):
     """FPy AST: variable"""
     name: str
 
-    def __init__(self, name: str, loc: Location):
+    def __init__(self, name: str, loc: Optional[Location]):
         super().__init__(loc)
         self.name = name
 
@@ -112,7 +112,7 @@ class Decnum(ValueExpr):
     """FPy AST: decimal number"""
     val: str
 
-    def __init__(self, val: str, loc: Location):
+    def __init__(self, val: str, loc: Optional[Location]):
         super().__init__(loc)
         self.val = val   
 
@@ -120,9 +120,18 @@ class Integer(ValueExpr):
     """FPy AST: integer"""
     val: int
 
-    def __init__(self, val: int, loc: Location):
+    def __init__(self, val: int, loc: Optional[Location]):
         super().__init__(loc)
         self.val = val
+
+class Constant(ValueExpr):
+    """FPy AST: constant expression"""
+    val: str
+
+    def __init__(self, val: str, loc: Optional[Location]):
+        super().__init__(loc)
+        self.val = val
+
 
 class UnaryOpKind(Enum):
     # unary operators
@@ -177,7 +186,7 @@ class UnaryOp(Expr):
         self,
         op: UnaryOpKind,
         arg: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.op = op
@@ -211,7 +220,7 @@ class BinaryOp(Expr):
         op: BinaryOpKind,
         left: Expr,
         right: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.op = op
@@ -236,7 +245,7 @@ class TernaryOp(Expr):
         arg0: Expr,
         arg1: Expr,
         arg2: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.op = op
@@ -257,7 +266,7 @@ class NaryOp(Expr):
         self,
         op: NaryOpKind,
         args: list[Expr],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.op = op
@@ -272,7 +281,7 @@ class Call(Expr):
         self,
         op: str,
         args: list[Expr],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.op = op
@@ -287,7 +296,7 @@ class Compare(Expr):
         self,
         ops: list[CompareOp],
         args: list[Expr],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.ops = ops
@@ -300,7 +309,7 @@ class TupleExpr(Expr):
     def __init__(
         self,
         args: list[Expr],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.args = args
@@ -316,7 +325,7 @@ class CompExpr(Expr):
         vars: Sequence[str],
         iterables: Sequence[Expr],
         elt: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.vars = list(vars)
@@ -328,7 +337,7 @@ class RefExpr(Expr):
     value: Expr
     slices: list[Expr]
 
-    def __init__(self, value: Expr, slices: Sequence[Expr], loc: Location):
+    def __init__(self, value: Expr, slices: Sequence[Expr], loc: Optional[Location]):
         super().__init__(loc)
         self.value = value
         self.slices = list(slices)
@@ -344,7 +353,7 @@ class IfExpr(Expr):
         cond: Expr,
         ift: Expr,
         iff: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.cond = cond
@@ -357,13 +366,20 @@ class Block(Ast):
 
     def __init__(self, stmts: list[Stmt]):
         assert stmts != [], "block must contain at least one statement"
-        super().__init__(Location(
-            stmts[0].loc.source,
-            stmts[0].loc.start_line,
-            stmts[0].loc.start_column,
-            stmts[-1].loc.end_line,
-            stmts[-1].loc.end_column
-        ))
+        first_loc = stmts[0].loc
+        last_loc = stmts[-1].loc
+        if first_loc is None or last_loc is None:
+            loc = None
+        else:
+            loc = Location(
+                first_loc.source,
+                first_loc.start_line,
+                first_loc.start_column,
+                last_loc.end_line,
+                last_loc.end_column
+            )
+
+        super().__init__(loc)
         self.stmts = stmts
 
 class VarAssign(Stmt):
@@ -377,7 +393,7 @@ class VarAssign(Stmt):
         var: str,
         expr: Expr,
         ann: Optional[TypeAnn],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.var = var
@@ -391,7 +407,7 @@ class TupleBinding(Ast):
     def __init__(
         self,
         vars: list[str | Self],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.elts = vars
@@ -419,7 +435,7 @@ class TupleAssign(Stmt):
         self,
         vars: TupleBinding,
         expr: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.binding = vars
@@ -436,7 +452,7 @@ class IfStmt(Stmt):
         cond: Expr,
         ift: Block,
         iff: Optional[Block],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.cond = cond
@@ -452,7 +468,7 @@ class WhileStmt(Stmt):
         self,
         cond: Expr,
         body: Block,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.cond = cond
@@ -469,7 +485,7 @@ class ForStmt(Stmt):
         var: str,
         iterable: Expr,
         body: Block,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.var = var
@@ -487,7 +503,7 @@ class ContextStmt(Stmt):
         name: Optional[str],
         props: dict[str, Any],
         body: Block,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.props = props
@@ -501,7 +517,7 @@ class Return(Stmt):
     def __init__(
         self,
         expr: Expr,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.expr = expr
@@ -515,7 +531,7 @@ class Argument(Ast):
         self,
         name: str,
         type: Optional[TypeAnn],
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.name = name
@@ -534,7 +550,7 @@ class FunctionDef(Ast):
         name: str,
         args: list[Argument],
         body: Block,
-        loc: Location
+        loc: Optional[Location]
     ):
         super().__init__(loc)
         self.name = name

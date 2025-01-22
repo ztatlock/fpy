@@ -27,6 +27,11 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_constant(self, e: Constant, ctx: Any):
+        """Visitor method for `Constant` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_digits(self, e: Digits, ctx: Any):
         """Visitor method for `Digits` nodes."""
         raise NotImplementedError('virtual method')
@@ -137,6 +142,8 @@ class BaseVisitor(ABC):
                 return self._visit_decnum(e, ctx)
             case Integer():
                 return self._visit_integer(e, ctx)
+            case Constant():
+                return self._visit_constant(e, ctx)
             case Digits():
                 return self._visit_digits(e, ctx)
             case UnknownCall():
@@ -214,6 +221,9 @@ class DefaultVisitor(Visitor):
         pass
 
     def _visit_integer(self, e: Integer, ctx: Any):
+        pass
+
+    def _visit_constant(self, e: Constant, ctx: Any):
         pass
 
     def _visit_digits(self, e: Digits, ctx: Any):

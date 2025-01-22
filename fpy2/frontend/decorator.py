@@ -4,10 +4,8 @@ Decorators for the FPy language.
 
 import inspect
 
-from typing import Callable, Optional, Concatenate
+from typing import Callable, Optional
 from typing import ParamSpec, TypeVar, overload
-
-from titanfp.arithmetic.evalctx import EvalCtx
 
 from .codegen import IRCodegen
 from .definition import DefinitionAnalysis
@@ -53,8 +51,7 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     source = ''.join(lines)
 
     # parse the source as an FPy function
-    parser = Parser(sourcename, source, start_line)
-    ast = parser.parse()
+    ast = Parser(sourcename, source, start_line).parse()
     assert isinstance(ast, FunctionDef), "must be a function"
 
     # add context information

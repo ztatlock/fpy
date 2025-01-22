@@ -69,6 +69,14 @@ class Integer(ValueExpr):
         super().__init__()
         self.val = val
 
+class Constant(ValueExpr):
+    """FPy node: numerical constant (symbolic)"""
+    val: str
+
+    def __init__(self, val: str):
+        super().__init__()
+        self.val = val
+
 class Digits(ValueExpr):
     """FPy node: numerical constant in scientific notation"""
     m: int

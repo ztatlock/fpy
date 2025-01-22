@@ -71,6 +71,10 @@ class SyntaxCheckInstance(AstVisitor):
     def _visit_integer(self, e, ctx: _Ctx):
         env, _ = ctx
         return env
+    
+    def _visit_constant(self, e, ctx):
+        env, _ = ctx
+        return env
 
     def _visit_unaryop(self, e, ctx: _Ctx):
         env, _ = ctx
