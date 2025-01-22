@@ -398,12 +398,12 @@ class CompExpr(Expr):
 class RefExpr(Expr):
     """FPy node: ref expression"""
     array: Expr
-    indices: list[Expr]
+    slice: Expr
 
-    def __init__(self, array: Expr, *indices: Expr):
+    def __init__(self, array: Expr, slice: Expr):
         super().__init__()
         self.array = array
-        self.indices = list(indices)
+        self.slice = slice
 
 class IfExpr(Expr):
     """FPy node: if expression (ternary)"""

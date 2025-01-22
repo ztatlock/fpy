@@ -237,8 +237,7 @@ class DefaultVisitor(Visitor):
 
     def _visit_ref_expr(self, e: RefExpr, ctx: Any):
         self._visit(e.array, ctx)
-        for c in e.indices:
-            self._visit(c, ctx)
+        self._visit(e.slice, ctx)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: Any):
         for iterable in e.iterables:

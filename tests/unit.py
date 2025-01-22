@@ -162,6 +162,16 @@ def test_list_comp1():
 def test_list_comp2():
     return [x + y for x in range(4) for y in range(5)]
 
+@fpy(name='Test list ref (1/2)')
+def test_list_ref1():
+    x = [1.0, 2.0, 3.0]
+    return x[0]
+
+@fpy(name='Test list ref (2/2)')
+def test_list_ref2():
+    x = [[1.0, 2.0, 3.0]]
+    return x[0][0]
+
 @fpy(name='Test if statement (1/4)')
 def test_if1():
     t = 0
@@ -431,6 +441,8 @@ cores: list = [
     test_list2,
     test_list_comp1,
     test_list_comp2,
+    test_list_ref1,
+    test_list_ref2,
     test_if1,
     test_if2,
     test_if3,

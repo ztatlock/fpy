@@ -80,6 +80,11 @@ class LiveVarAnalysisInstance(AstVisitor):
             live |= self._visit(iterable, ctx)
         return live
 
+    def _visit_ref_expr(self, e, ctx):
+        live = self._visit(e.value, ctx) | self._visit(e.slice, ctx)
+        e.attribs[LiveVarAnalysis.analysis_name] = set(live)
+        return live
+
     def _visit_if_expr(self, e, ctx) -> _LiveSet:
         cond_live = self._visit(e.cond, ctx)
         ift_live = self._visit(e.ift, ctx)
@@ -139,6 +144,10 @@ class LiveVarAnalysisInstance(AstVisitor):
 
     def _visit_function(self, func, ctx: _LiveSet):
         return self._visit(func.body, ctx)
+
+    # override for typing hint
+    def _visit(self, e, ctx: Optional[_LiveSet]) -> _LiveSet:
+        return super()._visit(e, ctx)
 
 
 class LiveVarAnalysis:

@@ -237,6 +237,12 @@ class _IRCodegenInstance(AstVisitor):
         elt = self._visit(e.elt, ctx)
         return ir.CompExpr(iter_vars, iterables, elt)
 
+    def _visit_ref_expr(self, e, ctx):
+        return ir.RefExpr(
+            self._visit(e.value, ctx),
+            self._visit(e.slice, ctx)
+        )
+
     def _visit_if_expr(self, e, ctx: _CtxType):
         return ir.IfExpr(
             self._visit(e.cond, ctx),

@@ -329,6 +329,10 @@ class Parser:
                     iterables.append(iterable)
                 elt = self._parse_expr(e.elt)
                 return CompExpr(vars, iterables, elt, loc)
+            case ast.Subscript():
+                value = self._parse_expr(e.value)
+                slice = self._parse_expr(e.slice)
+                return RefExpr(value, slice, loc)
             case ast.IfExp():
                 cond = self._parse_expr(e.test)
                 ift = self._parse_expr(e.body)

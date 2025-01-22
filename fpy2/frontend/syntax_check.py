@@ -123,6 +123,12 @@ class SyntaxCheckInstance(AstVisitor):
         self._visit(e.elt, (env, False))
         return env
 
+    def _visit_ref_expr(self, e, ctx: _Ctx):
+        env, _ = ctx
+        self._visit(e.value, ctx)
+        self._visit(e.slice, ctx)
+        return env
+
     def _visit_if_expr(self, e, ctx: _Ctx):
         env, _ = ctx
         self._visit(e.cond, ctx)
