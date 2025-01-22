@@ -31,6 +31,9 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_decnum(self, e, ctx: _CtxType):
         return ir.Decnum(e.val)
 
+    def _visit_hexnum(self, e, ctx: _CtxType):
+        return ir.Hexnum(e.val)
+
     def _visit_integer(self, e, ctx: _CtxType):
         return ir.Integer(e.val)
 

@@ -22,6 +22,11 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_hexnum(self, e: Hexnum, ctx: Any):
+        """Visitor method for `Hexnum` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_integer(self, e: Integer, ctx: Any):
         """Visitor method for `Integer` nodes."""
         raise NotImplementedError('virtual method')
@@ -140,6 +145,8 @@ class BaseVisitor(ABC):
                 return self._visit_var(e, ctx)
             case Decnum():
                 return self._visit_decnum(e, ctx)
+            case Hexnum():
+                return self._visit_hexnum(e, ctx)
             case Integer():
                 return self._visit_integer(e, ctx)
             case Constant():
@@ -218,6 +225,9 @@ class DefaultVisitor(Visitor):
         pass
 
     def _visit_decnum(self, e: Decnum, ctx: Any):
+        pass
+
+    def _visit_hexnum(self, e: Hexnum, ctx: Any):
         pass
 
     def _visit_integer(self, e: Integer, ctx: Any):
@@ -308,10 +318,13 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_decnum(self, e, ctx: Any):
         return Decnum(e.val)
-    
+
+    def _visit_hexnum(self, e, ctx: Any):
+        return Hexnum(e.val)
+
     def _visit_integer(self, e, ctx: Any):
         return Integer(e.val)
-    
+
     def _visit_digits(self, e, ctx: Any):
         return Digits(e.m, e.e, e.b)
 

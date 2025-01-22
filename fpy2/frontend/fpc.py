@@ -39,8 +39,14 @@ class _FPCore2FPy:
     def _visit_decnum(self, e: fpc.Decnum, ctx: _Ctx) -> Expr:
         return Decnum(str(e.value), None)
 
+    def _visit_hexnum(self, e: fpc.Hexnum, ctx: _Ctx) -> Expr:
+        return Hexnum(str(e.value), None)
+
     def _visit_integer(self, e: fpc.Integer, ctx: _Ctx) -> Expr:
         return Integer(e.value, None)
+
+    def _visit_rational(self, e: fpc.Rational, ctx: _Ctx) -> Expr:
+        return Rational(e.p, e.q, None)
 
     def _visit_constant(self, e: fpc.Constant, ctx: _Ctx) -> Expr:
         return Constant(str(e.value), None)
@@ -86,8 +92,12 @@ class _FPCore2FPy:
         match e:
             case fpc.Decnum():
                 return self._visit_decnum(e, ctx)
+            case fpc.Hexnum():
+                return self._visit_hexnum(e, ctx)
             case fpc.Integer():
                 return self._visit_integer(e, ctx)
+            case fpc.Rational():
+                return self._visit_rational(e, ctx)
             case fpc.Constant():
                 return self._visit_constant(e, ctx)
             case fpc.NaryExpr():

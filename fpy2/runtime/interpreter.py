@@ -136,7 +136,10 @@ class _Interpreter(ReduceVisitor):
 
     def _visit_integer(self, e, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
-    
+
+    def _visit_hexnum(self, e, ctx: EvalCtx):
+        return MPMF(x=e.val, ctx=ctx)
+
     def _visit_constant(self, e, ctx: EvalCtx):
         raise NotImplementedError('unknown constant', e.val)
 

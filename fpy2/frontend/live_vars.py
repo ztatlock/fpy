@@ -23,6 +23,10 @@ class LiveVarAnalysisInstance(AstVisitor):
         e.attribs[LiveVarAnalysis.analysis_name] = set()
         return set()
 
+    def _visit_hexnum(self, e, ctx) -> _LiveSet:
+        e.attribs[LiveVarAnalysis.analysis_name] = set()
+        return set()
+
     def _visit_integer(self, e, ctx) -> _LiveSet:
         e.attribs[LiveVarAnalysis.analysis_name] = set()
         return set()

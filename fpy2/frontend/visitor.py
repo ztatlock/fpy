@@ -22,9 +22,17 @@ class AstVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_hexnum(self, e: Hexnum, ctx: Any) -> Any:
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_integer(self, e: Integer, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
-    
+
+    @abstractmethod
+    def _visit_rational(self, e: Rational, ctx: Any) -> Any:
+        raise NotImplementedError('virtual method')
+
     @abstractmethod
     def _visit_constant(self, e: Constant, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
@@ -124,8 +132,12 @@ class AstVisitor(ABC):
                 return self._visit_var(e, ctx)
             case Decnum():
                 return self._visit_decnum(e, ctx)
+            case Hexnum():
+                return self._visit_hexnum(e, ctx)
             case Integer():
                 return self._visit_integer(e, ctx)
+            case Rational():
+                return self._visit_rational(e, ctx)
             case Constant():
                 return self._visit_constant(e, ctx)
             case UnaryOp():

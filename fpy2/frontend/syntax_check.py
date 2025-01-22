@@ -68,10 +68,18 @@ class SyntaxCheckInstance(AstVisitor):
         env, _ = ctx
         return env
 
+    def _visit_hexnum(self, e, ctx: _Ctx):
+        env, _ = ctx
+        return env
+
     def _visit_integer(self, e, ctx: _Ctx):
         env, _ = ctx
         return env
-    
+
+    def _visit_rational(self, e, ctx: _Ctx):
+        env, _ = ctx
+        return
+
     def _visit_constant(self, e, ctx):
         env, _ = ctx
         return env

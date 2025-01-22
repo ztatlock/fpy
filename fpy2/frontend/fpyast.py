@@ -116,6 +116,14 @@ class Decnum(ValueExpr):
         super().__init__(loc)
         self.val = val   
 
+class Hexnum(ValueExpr):
+    """FPy AST: hexadecimal number"""
+    val: str
+
+    def __init__(self, val: str, loc: Optional[Location]):
+        super().__init__(loc)
+        self.val = val
+
 class Integer(ValueExpr):
     """FPy AST: integer"""
     val: int
@@ -123,6 +131,16 @@ class Integer(ValueExpr):
     def __init__(self, val: int, loc: Optional[Location]):
         super().__init__(loc)
         self.val = val
+
+class Rational(ValueExpr):
+    """FPy AST: rational number"""
+    p: int
+    q: int
+
+    def __init__(self, p: int, q: int, loc: Optional[Location]):
+        super().__init__(loc)
+        self.p = p
+        self.q = q
 
 class Constant(ValueExpr):
     """FPy AST: constant expression"""

@@ -54,7 +54,15 @@ class Var(ValueExpr):
         self.name = name
 
 class Decnum(ValueExpr):
-    """FPy node: (decimal) number"""
+    """FPy node: decimal number"""
+    val: str
+
+    def __init__(self, val: str):
+        super().__init__()
+        self.val = val
+
+class Hexnum(ValueExpr):
+    """FPy node: hexadecimal number"""
     val: str
 
     def __init__(self, val: str):
