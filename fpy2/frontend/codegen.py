@@ -37,6 +37,12 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_integer(self, e, ctx: _CtxType):
         return ir.Integer(e.val)
 
+    def _visit_rational(self, e, ctx: _CtxType):
+        return ir.Rational(e.p, e.q)
+
+    def _visit_digits(self, e, ctx: _CtxType):
+        return ir.Digits(e.m, e.e, e.b)
+
     def _visit_constant(self, e, ctx: _CtxType):
         return ir.Constant(e.val)
 
@@ -202,11 +208,6 @@ class _IRCodegenInstance(AstVisitor):
         match e.op:
             case TernaryOpKind.FMA:
                 return ir.Fma(arg0, arg1, arg2)
-            case TernaryOpKind.DIGITS:
-                assert isinstance(arg0, ir.Integer), f'must be an integer, got {arg0}'
-                assert isinstance(arg1, ir.Integer), f'must be an integer, got {arg1}'
-                assert isinstance(arg2, ir.Integer), f'must be an integer, got {arg2}'
-                return ir.Digits(arg0.val, arg1.val, arg2.val)
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 

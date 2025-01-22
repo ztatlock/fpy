@@ -34,6 +34,10 @@ class AstVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_digits(self, e: Digits, ctx: Any) -> Any:
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_constant(self, e: Constant, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
 
@@ -138,6 +142,8 @@ class AstVisitor(ABC):
                 return self._visit_integer(e, ctx)
             case Rational():
                 return self._visit_rational(e, ctx)
+            case Digits():
+                return self._visit_digits(e, ctx)
             case Constant():
                 return self._visit_constant(e, ctx)
             case UnaryOp():
@@ -195,4 +201,4 @@ class AstVisitor(ABC):
             case FunctionDef():
                 return self._visit_function(e, ctx)
             case _:
-                raise NotImplementedError(f'no visitor method for {e}')
+                raise NotImplementedError(f'no visitor method for {repr(e)}')

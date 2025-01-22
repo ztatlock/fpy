@@ -142,6 +142,18 @@ class Rational(ValueExpr):
         self.p = p
         self.q = q
 
+class Digits(ValueExpr):
+    """FPy AST: scientific notation"""
+    m: int
+    e: int
+    b: int
+
+    def __init__(self, m: int, e: int, b: int, loc: Optional[Location]):
+        super().__init__(loc)
+        self.m = m
+        self.e = e
+        self.b = b
+
 class Constant(ValueExpr):
     """FPy AST: constant expression"""
     val: str
@@ -248,7 +260,6 @@ class BinaryOp(Expr):
 class TernaryOpKind(Enum):
     # ternary operators
     FMA = 0
-    DIGITS = 1
 
 class TernaryOp(Expr):
     """FPy AST: ternary operation"""

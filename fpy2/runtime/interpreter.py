@@ -7,6 +7,7 @@ from titanfp.arithmetic.ieee754 import ieee_ctx
 from titanfp.arithmetic.mpmf import MPMF
 from titanfp.titanic.digital import Digital
 from titanfp.titanic.ndarray import NDArray
+from titanfp.titanic.ops import OP
 import titanfp.titanic.gmpmath as gmpmath
 
 from .function import BaseInterpreter, Function
@@ -139,6 +140,12 @@ class _Interpreter(ReduceVisitor):
 
     def _visit_hexnum(self, e, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
+
+    def _visit_rational(self, e, ctx: EvalCtx):
+        p = Digital(m=e.p, exp=0, inexact=False)
+        q = Digital(m=e.q, exp=0, inexact=False)
+        x = gmpmath.compute(OP.div, p, q, prec=ctx.p)
+        return MPMF._round_to_context(x, ctx=ctx)
 
     def _visit_constant(self, e, ctx: EvalCtx):
         raise NotImplementedError('unknown constant', e.val)

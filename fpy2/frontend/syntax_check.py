@@ -78,7 +78,11 @@ class SyntaxCheckInstance(AstVisitor):
 
     def _visit_rational(self, e, ctx: _Ctx):
         env, _ = ctx
-        return
+        return env
+
+    def _visit_digits(self, e, ctx: _Ctx):
+        env, _ = ctx
+        return env
 
     def _visit_constant(self, e, ctx):
         env, _ = ctx

@@ -32,6 +32,11 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_rational(self, e: Rational, ctx: Any):
+        """Visitor method for `Rational` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_constant(self, e: Constant, ctx: Any):
         """Visitor method for `Constant` nodes."""
         raise NotImplementedError('virtual method')
@@ -149,6 +154,8 @@ class BaseVisitor(ABC):
                 return self._visit_hexnum(e, ctx)
             case Integer():
                 return self._visit_integer(e, ctx)
+            case Rational():
+                return self._visit_rational(e, ctx)
             case Constant():
                 return self._visit_constant(e, ctx)
             case Digits():
@@ -231,6 +238,9 @@ class DefaultVisitor(Visitor):
         pass
 
     def _visit_integer(self, e: Integer, ctx: Any):
+        pass
+
+    def _visit_rational(self, e: Rational, ctx: Any):
         pass
 
     def _visit_constant(self, e: Constant, ctx: Any):
@@ -324,6 +334,9 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_integer(self, e, ctx: Any):
         return Integer(e.val)
+
+    def _visit_rational(self, e, ctx: Any):
+        return Rational(e.p, e.q)
 
     def _visit_digits(self, e, ctx: Any):
         return Digits(e.m, e.e, e.b)

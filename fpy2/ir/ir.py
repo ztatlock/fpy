@@ -77,6 +77,16 @@ class Integer(ValueExpr):
         super().__init__()
         self.val = val
 
+class Rational(ValueExpr):
+    """FPy node: numerical constant (rational)"""
+    p: int
+    q: int
+
+    def __init__(self, p: int, q: int):
+        super().__init__()
+        self.p = p
+        self.q = q
+
 class Constant(ValueExpr):
     """FPy node: numerical constant (symbolic)"""
     val: str

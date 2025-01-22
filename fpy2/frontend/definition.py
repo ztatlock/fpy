@@ -30,6 +30,12 @@ class DefinitionAnalysisInstance(AstVisitor):
     def _visit_integer(self, e, ctx):
         raise NotImplementedError('should not be called')
 
+    def _visit_rational(self, e, ctx):
+        raise NotImplementedError('should not be called')
+
+    def _visit_digits(self, e, ctx):
+        raise NotImplementedError('should not be called')
+
     def _visit_constant(self, e, ctx):
         raise NotImplementedError('should not be called')
 

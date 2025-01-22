@@ -78,8 +78,7 @@ _binary_table = {
 }
 
 _ternary_table = {
-    'fma': TernaryOpKind.FMA,
-    'digits': TernaryOpKind.DIGITS
+    'fma': TernaryOpKind.FMA
 }
 
 class FPyParserError(Exception):
@@ -284,6 +283,20 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'Unsupported constant', e)
 
+    def _parse_digits(self, e: ast.Call, loc: Location):
+        if len(e.args) != 3:
+            raise FPyParserError(loc, 'FPy `digits` expects three arguments', e)
+        m_e = self._parse_expr(e.args[0])
+        if not isinstance(m_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as first argument', e)
+        e_e = self._parse_expr(e.args[1])
+        if not isinstance(e_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as second argument', e)
+        b_e = self._parse_expr(e.args[2])
+        if not isinstance(b_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as third argument', e)
+        return Digits(m_e.val, e_e.val, b_e.val, loc)
+
     def _parse_expr(self, e: ast.expr) -> Expr:
         """Parse a Python expression."""
         loc = self._parse_location(e)
@@ -324,6 +337,8 @@ class Parser:
                 elif name == 'and':
                     args = [self._parse_expr(arg) for arg in e.args]
                     return NaryOp(NaryOpKind.AND, args, loc)
+                elif name == 'digits':
+                    return self._parse_digits(e)
                 else:
                     return Call(name, [self._parse_expr(arg) for arg in e.args], loc)
             case ast.Tuple():
