@@ -43,7 +43,7 @@ _Ctx = tuple[_Env, bool]
 class SyntaxCheckInstance(AstVisitor):
     """Single-use instance of syntax checking"""
     func: FunctionDef
-    rets: set[Location]
+    rets: set[Stmt]
 
     def __init__(self, func: FunctionDef):
         self.func = func
@@ -230,7 +230,7 @@ class SyntaxCheckInstance(AstVisitor):
                     if i != len(block.stmts) - 1:
                         raise FPySyntaxError('return statement must be at the end of the function definition')
                     env = self._visit(stmt, (env, False))
-                    self.rets.add(stmt.loc)
+                    self.rets.add(stmt)
                 case _:
                     raise NotImplementedError('unreachable', stmt)
 

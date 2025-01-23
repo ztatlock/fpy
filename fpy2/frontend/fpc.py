@@ -53,6 +53,7 @@ _unary_table = {
     'isnan': UnaryOpKind.ISNAN,
     'isnormal': UnaryOpKind.ISNORMAL,
     'signbit': UnaryOpKind.SIGNBIT,
+    'cast': UnaryOpKind.CAST,
     'range': UnaryOpKind.RANGE,
 }
 
@@ -232,17 +233,74 @@ class _FPCore2FPy:
         env = ctx.env
         is_star = isinstance(e, fpc.LetStar)
 
-        for binding in e.let_bindings:
-            var, val = binding
+        for var, val in e.let_bindings:
+            # compile value
             val_ctx = _Ctx(env=env, stmts=ctx.stmts) if is_star else ctx
             v_e = self._visit(val, val_ctx)
-
+            # bind value to variable
             t = self.gensym.fresh(var)
             env = { **env, var: t }
             stmt = VarAssign(t, v_e, None, None)
             ctx.stmts.append(stmt)
 
         return self._visit(e.body, _Ctx(env=env, stmts=ctx.stmts))
+
+    def _visit_while(self, e: fpc.While, ctx: _Ctx) -> Expr:
+        env = ctx.env
+        is_star = isinstance(e, fpc.WhileStar)
+
+        # initialize loop variables
+        for var, init, _ in e.while_bindings:
+            # compile value
+            init_ctx = _Ctx(env=env, stmts=ctx.stmts) if is_star else ctx
+            init_e = self._visit(init, init_ctx)
+            # bind value to variable
+            t = self.gensym.fresh(var)
+            env = { **env, var: t }
+            stmt = VarAssign(t, init_e, None, None)
+            ctx.stmts.append(stmt)
+
+        # create loop body
+        loop_env = dict(env)
+        stmts: list[Stmt] = []
+        for var, _, update in e.while_bindings:
+            # compile value
+            update_env = loop_env if is_star else env
+            update_ctx = _Ctx(env=update_env, stmts=stmts)
+            update_e = self._visit(update, update_ctx)
+            # bind value to temporary
+            t = self.gensym.fresh('t')
+            loop_env = { **env, var: t }
+            stmt = VarAssign(t, update_e, None, None)
+            stmts.append(stmt)
+
+        # rebind temporaries
+        for var, _, _ in e.while_bindings:
+            v = env[var]
+            t = loop_env[var]
+            stmt = VarAssign(v, Var(t, None), None, None)
+            stmts.append(stmt)
+
+        # append while statement
+        cond_e = self._visit(e.cond, _Ctx(env=env, stmts=ctx.stmts))
+        ctx.stmts.append(WhileStmt(cond_e, Block(stmts), None))
+
+        # compile body
+        return self._visit(e.body, _Ctx(env=env, stmts=ctx.stmts))
+
+    def _visit_ctx(self, e: fpc.Ctx, ctx: _Ctx) -> Expr:
+        # compile body
+        val_ctx = ctx.without_stmts()
+        val = self._visit(e.body, val_ctx)
+
+        # bind value to temporary
+        t = self.gensym.fresh('t')
+        block = Block(val_ctx.stmts + [VarAssign(t, val, None, None)])
+        stmt = ContextStmt(None, dict(e.props), block, None)
+        ctx.stmts.append(stmt)
+
+        return Var(t, None)
+
 
     def _visit(self, e: fpc.Expr, ctx: _Ctx) -> Expr:
         match e:
@@ -272,20 +330,37 @@ class _FPCore2FPy:
                 return self._visit_if(e, ctx)
             case fpc.Let():
                 return self._visit_let(e, ctx)
+            case fpc.While():
+                return self._visit_while(e, ctx)
+            case fpc.Ctx():
+                return self._visit_ctx(e, ctx)
             case _:
                 raise NotImplementedError(f'cannot convert to FPy {e}')
 
     def _visit_function(self, f: fpc.FPCore):
-        if f.inputs != []:
-            raise NotImplementedError('args')
-        # TODO: parse metadata
+        # TODO: parse properties
         props = dict(f.props)
 
+        # setup context
         ctx = _Ctx()
+
+        # compile arguments
+        args: list[Argument] = []
+        for name, arg_props, shape in f.inputs:
+            match (arg_props, shape):
+                case ({}, None):
+                    t = self.gensym.fresh(name)
+                    arg = Argument(t, None, None)
+                    args.append(arg)
+                    ctx.env[name] = t
+                case _:
+                    raise NotImplementedError(name, arg_props, shape)
+
+        # compile function body
         e = self._visit(f.e, ctx)
         block = Block(ctx.stmts + [Return(e, None)])
 
-        ast = FunctionDef(f.ident, [], block, None)
+        ast = FunctionDef(f.ident, args, block, None)
         ast.ctx = props
         return ast
 
@@ -297,7 +372,6 @@ class _FPCore2FPy:
 
 def fpcore_to_fpy(core: fpc.FPCore):
     ast = _FPCore2FPy(core).convert()
-    print(ast)
     
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)

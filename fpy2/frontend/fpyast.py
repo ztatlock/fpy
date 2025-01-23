@@ -204,8 +204,9 @@ class UnaryOpKind(Enum):
     ISNAN = 35
     ISNORMAL = 36
     SIGNBIT = 37
+    CAST = 38
     # unary generator
-    RANGE = 38
+    RANGE = 39
 
 class UnaryOp(Expr):
     """FPy AST: unary operation"""
@@ -577,13 +578,13 @@ class FunctionDef(Ast):
     def __init__(
         self,
         name: str,
-        args: list[Argument],
+        args: Sequence[Argument],
         body: Block,
         loc: Optional[Location]
     ):
         super().__init__(loc)
         self.name = name
-        self.args = args
+        self.args = list(args)
         self.body = body
         self.ctx = {}
         self.globals = {}

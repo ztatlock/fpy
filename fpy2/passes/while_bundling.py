@@ -92,6 +92,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
                 stmts.append(self._visit(stmt, ctx.copy()))
         return Block(stmts)
 
+
 class WhileBundling:
     """
     Transformation pass to bundle updated variables in while loops.

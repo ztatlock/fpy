@@ -58,6 +58,7 @@ _unary_table = {
     'isnormal': UnaryOpKind.ISNORMAL,
     'signbit': UnaryOpKind.SIGNBIT,
     'not': UnaryOpKind.NOT,
+    'cast': UnaryOpKind.CAST,
     'range': UnaryOpKind.RANGE
 }
 
@@ -283,7 +284,8 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'Unsupported constant', e)
 
-    def _parse_digits(self, e: ast.Call, loc: Location):
+    def _parse_digits(self, e: ast.Call):
+        loc = self._parse_location(e)
         if len(e.args) != 3:
             raise FPyParserError(loc, 'FPy `digits` expects three arguments', e)
         m_e = self._parse_expr(e.args[0])

@@ -343,6 +343,7 @@ class Tgamma(UnaryExpr):
     """FPy node: gamma function"""
     name: str = 'tgamma'
 
+
 # Classification
 
 class IsFinite(UnaryExpr):
@@ -378,6 +379,12 @@ class Or(NaryExpr):
 class And(NaryExpr):
     """FPy node: logical conjunction"""
     name: str = 'and'
+
+# Rounding operator
+
+class Cast(UnaryExpr):
+    """FPy node: inter-format rounding"""
+    name: str = 'cast'
 
 # Tensor operators
 

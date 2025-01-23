@@ -162,6 +162,9 @@ class _IRCodegenInstance(AstVisitor):
             case UnaryOpKind.SIGNBIT:
                 arg = self._visit(e.arg, ctx)
                 return ir.Signbit(arg)
+            case UnaryOpKind.CAST:
+                arg = self._visit(e.arg, ctx)
+                return ir.Cast(arg)
             case UnaryOpKind.RANGE:
                 arg = self._visit(e.arg, ctx)
                 return ir.Range(arg)

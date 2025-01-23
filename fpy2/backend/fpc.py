@@ -139,8 +139,17 @@ class FPCoreCompileInstance(ReduceVisitor):
     def _visit_decnum(self, e, ctx) -> fpc.Expr:
         return fpc.Decnum(e.val)
 
+    def _visit_hexnum(self, e, ctx):
+        raise fpc.Hexnum(e.val)
+
     def _visit_integer(self, e, ctx) -> fpc.Expr:
         return fpc.Integer(e.val)
+
+    def _visit_rational(self, e, ctx):
+        raise fpc.Rational(e.p, e.q)
+
+    def _visit_constant(self, e, ctx):
+        raise fpc.Constant(e.val)
 
     def _visit_digits(self, e, ctx) -> fpc.Expr:
         return fpc.Digits(e.m, e.e, e.b)

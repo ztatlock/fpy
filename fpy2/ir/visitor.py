@@ -341,6 +341,9 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_digits(self, e, ctx: Any):
         return Digits(e.m, e.e, e.b)
 
+    def _visit_constant(self, e, ctx):
+        raise Constant(e.val)
+
     def _visit_unknown(self, e, ctx: Any):
         return UnknownCall(*[self._visit(c, ctx) for c in e.children])
 
