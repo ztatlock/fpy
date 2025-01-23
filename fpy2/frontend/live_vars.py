@@ -119,6 +119,13 @@ class LiveVarAnalysisInstance(AstVisitor):
         ctx -= stmt.binding.names()
         return ctx | self._visit(stmt.expr, None)
 
+    def _visit_ref_assign(self, stmt, ctx: _LiveSet) -> _LiveSet:
+        ctx |= self._visit(stmt.expr, set(ctx))
+        for s in stmt.slices:
+            ctx |= self._visit(s, set(ctx))
+        ctx.add(stmt.var)
+        return ctx
+
     def _visit_if_stmt(self, stmt, ctx: _LiveSet) -> _LiveSet:
         if stmt.iff is None:
             ctx |= self._visit(stmt.ift, set(ctx))

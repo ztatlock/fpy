@@ -246,7 +246,7 @@ class _Interpreter(ReduceVisitor):
         value = self._visit(e.value, ctx)
         if not isinstance(value, NDArray):
             raise TypeError(f'expected a tensor, got {value}')
-        
+
         slices: list[int] = []
         for s in e.slices:
             val = self._visit(s, ctx)
@@ -303,6 +303,26 @@ class _Interpreter(ReduceVisitor):
         if not isinstance(val, NDArray):
             raise TypeError(f'expected a tuple, got {val}')
         return self._unpack_tuple(stmt.binding, val, ctx)
+
+    def _visit_ref_assign(self, stmt, ctx: EvalCtx):
+        if stmt.var not in ctx.bindings:
+            raise RuntimeError(f'unbound variable {stmt.var}')
+        array = ctx.bindings[stmt.var]
+
+        # evaluate indices
+        slices: list[int] = []
+        for s in stmt.slices:
+            val = self._visit(s, ctx)
+            if not isinstance(val, Digital):
+                raise TypeError(f'expected a real number slice, got {val}')
+            if not val.is_integer():
+                raise TypeError(f'expected an integer slice, got {val}')
+            slices.append(int(val))
+
+        # evaluate and update array
+        val = self._visit(stmt.expr, ctx)
+        array[slices] = val
+        return ctx
 
     def _visit_if1_stmt(self, stmt, ctx: EvalCtx):
         cond = self._visit(stmt.cond, ctx)

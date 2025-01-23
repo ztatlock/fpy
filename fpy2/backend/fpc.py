@@ -302,6 +302,9 @@ class FPCoreCompileInstance(ReduceVisitor):
         destruct_bindings = self._compile_tuple_binding(tuple_id, stmt.binding, [])
         return fpc.Let([tuple_bind] + destruct_bindings, ctx)
 
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: fpc.Expr):
+        raise NotImplementedError('unimplemented')
+
     def _visit_if1_stmt(self, stmt, ctx):
         raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
 
@@ -348,13 +351,9 @@ class FPCoreCompileInstance(ReduceVisitor):
             stmts = block.stmts
 
         for stmt in reversed(stmts):
-            match stmt:
-                case VarAssign() | TupleAssign() | WhileStmt() | ForStmt() | ContextStmt():
-                    e = self._visit(stmt, e)
-                case Return():
-                    raise FPCoreCompileError('return statements must be at the end of blocks')
-                case _:
-                    raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
+            if isinstance(stmt, Return):
+                raise FPCoreCompileError('return statements must be at the end of blocks')
+            e = self._visit(stmt, e)
 
         return e
 

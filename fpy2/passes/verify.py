@@ -52,6 +52,14 @@ class _VerifyPassInstance(DefaultVisitor):
             ctx.add(var)
         return ctx
 
+    def _visit_ref_assign(self, stmt, ctx: _CtxType):
+        if stmt.var not in ctx:
+            raise InvalidIRError(f'undefined variable {stmt.var}')
+        for s in stmt.slices:
+            self._visit(s, ctx)
+        self._visit(stmt.expr, ctx)
+        return ctx
+
     def _visit_if1_stmt(self, stmt, ctx: _CtxType):
         self._visit(stmt.cond, ctx)
         body_ctx = self._visit_block(stmt.body, ctx.copy())

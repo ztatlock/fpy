@@ -291,6 +291,12 @@ class _IRCodegenInstance(AstVisitor):
         s = ir.TupleAssign(vars, tys, e)
         return s, ctx
 
+    def _visit_ref_assign(self, stmt, ctx: _CtxType):
+        slices = [self._visit(s, ctx) for s in stmt.slices]
+        e = self._visit(stmt.expr, ctx)
+        s = ir.RefAssign(stmt.var, slices, e)
+        return s, ctx
+
     def _visit_if1_stmt(self, stmt: IfStmt, ctx: _CtxType):
         """Like `_visit_if_stmt`, but for 1-armed if statements."""
         cond = self._visit(stmt.cond, ctx)

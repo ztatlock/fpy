@@ -174,6 +174,13 @@ class SyntaxCheckInstance(AstVisitor):
         self._visit(stmt.expr, ctx)
         return self._visit_tuple_binding(stmt.binding, ctx)
 
+    def _visit_ref_assign(self, stmt, ctx: _Ctx):
+        env, _ = ctx
+        for s in stmt.slices:
+            self._visit(s, ctx)
+        self._visit(stmt.expr, ctx)
+        return env
+
     def _visit_if_stmt(self, stmt, ctx: _Ctx):
         self._visit(stmt.cond, ctx)
         ift_env = self._visit(stmt.ift, ctx)
@@ -215,6 +222,8 @@ class SyntaxCheckInstance(AstVisitor):
                 case VarAssign():
                     env = self._visit(stmt, (env, False))
                 case TupleAssign():
+                    env = self._visit(stmt, (env, False))
+                case RefAssign():
                     env = self._visit(stmt, (env, False))
                 case IfStmt():
                     env = self._visit(stmt, (env, False))

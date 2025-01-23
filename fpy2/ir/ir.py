@@ -496,6 +496,18 @@ class TupleAssign(Stmt):
         self.ty = ty
         self.expr = expr
 
+class RefAssign(Stmt):
+    """FPy node: assignment to a tuple element"""
+    var: str
+    slices: list[Expr]
+    expr: Expr
+
+    def __init__(self, var: str, slices: Sequence[Expr], expr: Expr):
+        super().__init__()
+        self.var = var
+        self.slices = list(slices)
+        self.expr = expr
+
 class PhiNode(IR):
     """FPy IR: phi node"""
     name: str

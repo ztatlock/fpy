@@ -471,6 +471,24 @@ class TupleAssign(Stmt):
         self.binding = vars
         self.expr = expr
 
+class RefAssign(Stmt):
+    """FPy AST: assignment to tuple indexing"""
+    var: str
+    slices: list[Expr]
+    expr: Expr
+
+    def __init__(
+        self,
+        var: str,
+        slices: Sequence[Expr],
+        expr: Expr,
+        loc: Optional[Location]
+    ):
+        super().__init__(loc)
+        self.var = var
+        self.slices = list(slices)
+        self.expr = expr
+
 class IfStmt(Stmt):
     """FPy AST: if statement"""
     cond: Expr

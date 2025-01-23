@@ -177,6 +177,24 @@ def test_list_ref3():
     x = [[1.0, 2.0], [3.0, 4.0]]
     return x[0, 1]
 
+@fpy(name='Test list set (1/3)')
+def test_list_set1():
+    x = [1.0, 2.0, 3.0]
+    x[0] = 0.0
+    return x
+
+@fpy(name='Test list set (2/3)')
+def test_list_set2():
+    x = [[1.0, 2.0, 3.0]]
+    x[0][0] = 0.0
+    return x
+
+@fpy(name='Test list set (3/3)')
+def test_list_set3():
+    x = [[[1.0, 2.0, 3.0]]]
+    x[0][0][0] = 0.0
+    return x
+
 @fpy(name='Test if statement (1/4)')
 def test_if1():
     t = 0
@@ -463,6 +481,9 @@ cores: list = [
     test_list_ref1,
     test_list_ref2,
     test_list_ref3,
+    test_list_set1,
+    test_list_set2,
+    test_list_set3,
     test_if1,
     test_if2,
     test_if3,

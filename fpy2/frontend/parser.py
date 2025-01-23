@@ -184,6 +184,34 @@ class Parser:
             case _:
                 raise FPyParserError(loc, 'Unsupported FPy type annotation', ann)
 
+    def _parse_constant(self, e: ast.Constant, loc: Location):
+        # TODO: reparse all constants to get exact value
+        match e.value:
+            case int():
+                return Integer(e.value, loc)
+            case float():
+                if e.value.is_integer():
+                    return Integer(int(e.value), loc)
+                else:
+                    return Decnum(str(e.value), loc)
+            case _:
+                raise FPyParserError(loc, 'Unsupported constant', e)
+
+    def _parse_digits(self, e: ast.Call):
+        loc = self._parse_location(e)
+        if len(e.args) != 3:
+            raise FPyParserError(loc, 'FPy `digits` expects three arguments', e)
+        m_e = self._parse_expr(e.args[0])
+        if not isinstance(m_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as first argument', e)
+        e_e = self._parse_expr(e.args[1])
+        if not isinstance(e_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as second argument', e)
+        b_e = self._parse_expr(e.args[2])
+        if not isinstance(b_e, Integer):
+            raise FPyParserError(loc, 'FPy `digits` expects an integer as third argument', e)
+        return Digits(m_e.val, e_e.val, b_e.val, loc)
+
     def _parse_unaryop(self, e: ast.UnaryOp):
         loc = self._parse_location(e)
         match e.op:
@@ -271,33 +299,14 @@ class Parser:
             case _:
                 return [self._parse_expr(slice)]
 
-    def _parse_constant(self, e: ast.Constant, loc: Location):
-        # TODO: reparse all constants to get exact value
-        match e.value:
-            case int():
-                return Integer(e.value, loc)
-            case float():
-                if e.value.is_integer():
-                    return Integer(int(e.value), loc)
-                else:
-                    return Decnum(str(e.value), loc)
-            case _:
-                raise FPyParserError(loc, 'Unsupported constant', e)
-
-    def _parse_digits(self, e: ast.Call):
-        loc = self._parse_location(e)
-        if len(e.args) != 3:
-            raise FPyParserError(loc, 'FPy `digits` expects three arguments', e)
-        m_e = self._parse_expr(e.args[0])
-        if not isinstance(m_e, Integer):
-            raise FPyParserError(loc, 'FPy `digits` expects an integer as first argument', e)
-        e_e = self._parse_expr(e.args[1])
-        if not isinstance(e_e, Integer):
-            raise FPyParserError(loc, 'FPy `digits` expects an integer as second argument', e)
-        b_e = self._parse_expr(e.args[2])
-        if not isinstance(b_e, Integer):
-            raise FPyParserError(loc, 'FPy `digits` expects an integer as third argument', e)
-        return Digits(m_e.val, e_e.val, b_e.val, loc)
+    def _parse_subscript(self, e: ast.Subscript):
+        value = self._parse_expr(e.value)
+        slices = self._parse_slice(e.slice, e)
+        while isinstance(value, RefExpr):
+            v_value, v_slices = value.value, value.slices
+            value = v_value
+            slices = v_slices + slices
+        return (value, slices)
 
     def _parse_expr(self, e: ast.expr) -> Expr:
         """Parse a Python expression."""
@@ -357,8 +366,7 @@ class Parser:
                 elt = self._parse_expr(e.elt)
                 return CompExpr(vars, iterables, elt, loc)
             case ast.Subscript():
-                value = self._parse_expr(e.value)
-                slices = self._parse_slice(e.slice, e)
+                value, slices = self._parse_subscript(e)
                 return RefExpr(value, slices, loc)
             case ast.IfExp():
                 cond = self._parse_expr(e.test)
@@ -368,16 +376,17 @@ class Parser:
             case _:
                 raise NotImplementedError('expression is unsupported in FPy', e)
 
-    def _parse_target(self, target: ast.expr, st: ast.stmt):
+    def _parse_tuple_target(self, target: ast.expr, st: ast.stmt):
         loc = self._parse_location(target)
         match target:
             case ast.Name():
                 return target.id
             case ast.Tuple():
-                return TupleBinding([self._parse_target(elt, st) for elt in target.elts], loc)
+                elts = [self._parse_tuple_target(elt, st) for elt in target.elts]
+                return TupleBinding(elts, loc)
             case _:
-                raise FPyParserError(loc, 'FPy expects an identifier', target, st)
- 
+                raise FPyParserError(loc, 'FPy expects an identifier', target, st)       
+
     def _parse_comprehension(self, gen: ast.comprehension, loc: Location):
         if gen.is_async:
             raise FPyParserError(loc, 'FPy does not support async comprehensions', gen)
@@ -477,14 +486,24 @@ class Parser:
             case ast.Assign():
                 if len(stmt.targets) != 1:
                     raise FPyParserError(loc, 'FPy only supports single assignment', stmt)
-                binding = self._parse_target(stmt.targets[0], stmt)
-                value = self._parse_expr(stmt.value)
-                if isinstance(binding, TupleBinding):
-                    return TupleAssign(binding, value, loc)
-                elif isinstance(binding, str):
-                    return VarAssign(binding, value, None, loc)
-                else:
-                    raise FPyParserError(loc, 'Unexpected binding type', stmt)
+                target = stmt.targets[0]
+                match target:
+                    case ast.Name():
+                        var = target.id
+                        value = self._parse_expr(stmt.value)
+                        return VarAssign(var, value, None, loc)
+                    case ast.Tuple():
+                        binding = self._parse_tuple_target(target, stmt)
+                        value = self._parse_expr(stmt.value)
+                        return TupleAssign(binding, value, loc)
+                    case ast.Subscript():
+                        var, slices = self._parse_subscript(target)
+                        if not isinstance(var, Var):
+                            raise FPyParserError(loc, 'FPy expects a variable', target, stmt)
+                        value = self._parse_expr(stmt.value)
+                        return RefAssign(var.name, slices, value, loc)
+                    case _:
+                        raise FPyParserError(loc, 'Unexpected binding type', stmt)
             case ast.If():
                 cond = self._parse_expr(stmt.test)
                 ift = self._parse_statements(stmt.body)

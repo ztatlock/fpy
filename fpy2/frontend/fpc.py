@@ -340,11 +340,11 @@ class _FPCore2FPy:
         env = ctx.env
         iter_vars: dict[str, str] = {}
         for var, val in e.dim_bindings:
-            t = self.gensym.fresh(var)
+            t = self.gensym.fresh('t')
             stmt = VarAssign(t, self._visit(val, ctx), None, None)
             ctx.stmts.append(stmt)
-            env[var] = t
             iter_vars[var] = t
+            env[t] = t
 
         # initialize loop variables
         for var, init, _ in e.while_bindings:
@@ -357,12 +357,8 @@ class _FPCore2FPy:
             ctx.stmts.append(stmt)
             env = { **env, var: t }
 
-        # create loop bodies
-
-
-
         raise NotImplementedError(e)
-    
+
     def _visit_tensor(self, e: fpc.Tensor, ctx: _Ctx) -> Expr:
         raise NotImplementedError(e)
 

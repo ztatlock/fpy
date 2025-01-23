@@ -93,7 +93,12 @@ class BaseVisitor(ABC):
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
         """Visitor method for `TupleAssign` nodes."""
         raise NotImplementedError('virtual method')
-    
+
+    @abstractmethod
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
+        """Visitor method for `RefAssign` nodes."""
+        raise NotImplementedError('virtual method')
+
     @abstractmethod
     def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
         """Visitor method for `If1Stmt` nodes."""
@@ -184,6 +189,8 @@ class BaseVisitor(ABC):
                 return self._visit_var_assign(stmt, ctx)
             case TupleAssign():
                 return self._visit_tuple_assign(stmt, ctx)
+            case RefAssign():
+                return self._visit_ref_assign(stmt, ctx)
             case If1Stmt():
                 return self._visit_if1_stmt(stmt, ctx)
             case IfStmt():
@@ -284,6 +291,11 @@ class DefaultVisitor(Visitor):
         self._visit(stmt.expr, ctx)
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
+        self._visit(stmt.expr, ctx)
+
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
+        for s in stmt.slices:
+            self._visit(s, ctx)
         self._visit(stmt.expr, ctx)
 
     def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
@@ -410,6 +422,11 @@ class DefaultTransformVisitor(TransformVisitor):
         vars = self._copy_tuple_binding(stmt.binding)
         val = self._visit(stmt.expr, ctx)
         return TupleAssign(vars, stmt.ty, val)
+
+    def _visit_ref_assign(self, stmt, ctx: Any):
+        slices = [self._visit(s, ctx) for s in stmt.slices]
+        expr = self._visit(stmt.expr, ctx)
+        return RefAssign(stmt.var, slices, expr)
 
     def _visit_if1_stmt(self, stmt, ctx):
         cond = self._visit(stmt.cond, ctx)

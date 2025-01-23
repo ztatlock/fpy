@@ -75,6 +75,9 @@ class DefinitionAnalysisInstance(AstVisitor):
     def _visit_tuple_assign(self, stmt, ctx: _DefSet):
         return ctx | stmt.binding.names()
 
+    def _visit_ref_assign(self, stmt, ctx):
+        return ctx
+
     def _visit_if_stmt(self, stmt, ctx: _DefSet):
         ift_defs = self._visit(stmt.ift, ctx)
         if stmt.iff is None:

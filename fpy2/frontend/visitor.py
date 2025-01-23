@@ -93,6 +93,10 @@ class AstVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: Any) -> Any:
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_if_stmt(self, stmt: IfStmt, ctx: Any) -> Any:
         raise NotImplementedError('virtual method')
 
@@ -176,6 +180,8 @@ class AstVisitor(ABC):
                 return self._visit_var_assign(stmt, ctx)
             case TupleAssign():
                 return self._visit_tuple_assign(stmt, ctx)
+            case RefAssign():
+                return self._visit_ref_assign(stmt, ctx)
             case IfStmt():
                 return self._visit_if_stmt(stmt, ctx)
             case WhileStmt():
