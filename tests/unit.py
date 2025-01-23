@@ -263,6 +263,20 @@ def test_while5():
     return x, y
 
 @fpy
+def test_while6():
+    a = 0
+    b = 0
+    while a <= 3:
+        a = a + 1
+        i = 0
+        x = 0
+        while i <= a:
+            i = i + 1
+            x = x + i
+        b = x
+    return b
+
+@fpy
 def test_for1():
     j = 0
     for i in range(5):

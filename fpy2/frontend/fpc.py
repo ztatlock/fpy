@@ -205,8 +205,20 @@ class _FPCore2FPy:
                 ops = [CompareOp.NE for _ in e.children[1:]]
                 exprs = [self._visit(e, ctx) for e in e.children]
                 return Compare(ops, exprs, None)
+            case fpc.UnknownOperator():
+                exprs = [self._visit(e, ctx) for e in e.children]
+                return Call(e.name, exprs, None)
             case _:
                 raise NotImplementedError('unexpected FPCore expression', e)
+
+    def _visit_array(self, e: fpc.Array, ctx: _Ctx) -> Expr:
+        exprs = [self._visit(e, ctx) for e in e.children]
+        return TupleExpr(exprs, None)
+
+    def _visit_ref(self, e: fpc.Ref, ctx: _Ctx) -> Expr:
+        value = self._visit(e.children[0], ctx)
+        slices = [self._visit(e, ctx) for e in e.children[1:]]
+        return RefExpr(value, slices, None)
 
     def _visit_if(self, e: fpc.If, ctx: _Ctx) -> Expr:
         # create new blocks
@@ -245,32 +257,66 @@ class _FPCore2FPy:
 
         return self._visit(e.body, _Ctx(env=env, stmts=ctx.stmts))
 
-    def _visit_while(self, e: fpc.While, ctx: _Ctx) -> Expr:
+    def _visit_whilestar(self, e: fpc.WhileStar, ctx: _Ctx) -> Expr:
         env = ctx.env
-        is_star = isinstance(e, fpc.WhileStar)
-
-        # initialize loop variables
         for var, init, _ in e.while_bindings:
             # compile value
-            init_ctx = _Ctx(env=env, stmts=ctx.stmts) if is_star else ctx
+            init_ctx = _Ctx(env=env, stmts=ctx.stmts)
             init_e = self._visit(init, init_ctx)
+            # bind value to variable
+            t = self.gensym.fresh(var)
+            stmt = VarAssign(t, init_e, None, None)
+            ctx.stmts.append(stmt)
+            env = { **env, var: t }
+
+        # compile condition
+        cond_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        cond_e = self._visit(e.cond, cond_ctx)
+
+        # create loop body
+        stmts: list[Stmt] = []
+        update_ctx = _Ctx(env=env, stmts=stmts)
+        for var, _, update in e.while_bindings:
+            # compile value and update loop variable
+            t = env[var]
+            update_e = self._visit(update, update_ctx)
+            stmt = VarAssign(t, update_e, None, None)
+            stmts.append(stmt)
+
+        # append while statement
+        while_stmt = WhileStmt(cond_e, Block(stmts), None)
+        ctx.stmts.append(while_stmt)
+
+        # compile body
+        body_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        return self._visit(e.body, body_ctx)
+
+    def _visit_while(self, e: fpc.While, ctx: _Ctx) -> Expr:
+        # initialize loop variables
+        env = ctx.env
+        for var, init, _ in e.while_bindings:
+            # compile value
+            init_e = self._visit(init, ctx)
             # bind value to variable
             t = self.gensym.fresh(var)
             env = { **env, var: t }
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
 
+        # compile condition
+        cond_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        cond_e = self._visit(e.cond, cond_ctx)
+
         # create loop body
         loop_env = dict(env)
         stmts: list[Stmt] = []
+        update_ctx = _Ctx(env=env, stmts=stmts)
         for var, _, update in e.while_bindings:
             # compile value
-            update_env = loop_env if is_star else env
-            update_ctx = _Ctx(env=update_env, stmts=stmts)
             update_e = self._visit(update, update_ctx)
             # bind value to temporary
             t = self.gensym.fresh('t')
-            loop_env = { **env, var: t }
+            loop_env = { **loop_env, var: t }
             stmt = VarAssign(t, update_e, None, None)
             stmts.append(stmt)
 
@@ -282,11 +328,43 @@ class _FPCore2FPy:
             stmts.append(stmt)
 
         # append while statement
-        cond_e = self._visit(e.cond, _Ctx(env=env, stmts=ctx.stmts))
-        ctx.stmts.append(WhileStmt(cond_e, Block(stmts), None))
+        while_stmt = WhileStmt(cond_e, Block(stmts), None)
+        ctx.stmts.append(while_stmt)
 
         # compile body
-        return self._visit(e.body, _Ctx(env=env, stmts=ctx.stmts))
+        body_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        return self._visit(e.body, body_ctx)
+
+    def _visit_tensorstar(self, e: fpc.TensorStar, ctx: _Ctx) -> Expr:
+        # bind iteration bounds to temporaries
+        env = ctx.env
+        iter_vars: dict[str, str] = {}
+        for var, val in e.dim_bindings:
+            t = self.gensym.fresh(var)
+            stmt = VarAssign(t, self._visit(val, ctx), None, None)
+            ctx.stmts.append(stmt)
+            env[var] = t
+            iter_vars[var] = t
+
+        # initialize loop variables
+        for var, init, _ in e.while_bindings:
+            # compile value
+            init_ctx = _Ctx(env=env, stmts=ctx.stmts)
+            init_e = self._visit(init, init_ctx)
+            # bind value to variable
+            t = self.gensym.fresh(var)
+            stmt = VarAssign(t, init_e, None, None)
+            ctx.stmts.append(stmt)
+            env = { **env, var: t }
+
+        # create loop bodies
+
+
+
+        raise NotImplementedError(e)
+    
+    def _visit_tensor(self, e: fpc.Tensor, ctx: _Ctx) -> Expr:
+        raise NotImplementedError(e)
 
     def _visit_ctx(self, e: fpc.Ctx, ctx: _Ctx) -> Expr:
         # compile body
@@ -324,14 +402,24 @@ class _FPCore2FPy:
                 return self._visit_binary(e, ctx)
             case fpc.TernaryExpr():
                 return self._visit_ternary(e, ctx)
+            case fpc.Array():
+                return self._visit_array(e, ctx)
+            case fpc.Ref():
+                return self._visit_ref(e, ctx)
             case fpc.NaryExpr():
                 return self._visit_nary(e, ctx)
             case fpc.If():
                 return self._visit_if(e, ctx)
             case fpc.Let():
                 return self._visit_let(e, ctx)
+            case fpc.WhileStar():
+                return self._visit_whilestar(e, ctx)
             case fpc.While():
                 return self._visit_while(e, ctx)
+            case fpc.TensorStar():
+                return self._visit_tensorstar(e, ctx)
+            case fpc.Tensor():
+                return self._visit_tensor(e, ctx)
             case fpc.Ctx():
                 return self._visit_ctx(e, ctx)
             case _:
@@ -372,7 +460,8 @@ class _FPCore2FPy:
 
 def fpcore_to_fpy(core: fpc.FPCore):
     ast = _FPCore2FPy(core).convert()
-    
+    print(ast)
+
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)
     DefinitionAnalysis.analyze(ast)

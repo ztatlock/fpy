@@ -349,11 +349,8 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_while_stmt(self, stmt, ctx: _CtxType):
         # merge variables initialized before the block that
         # are updated in the body of the loop
-        live_in, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
-        live_cond = stmt.cond.attribs[LiveVarAnalysis.analysis_name]
-        live_body, _ = stmt.body.attribs[LiveVarAnalysis.analysis_name]
+        live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
         _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
-        live_loop: set[str] = live_cond | live_body
         # generate fresh variables for all changed variables
         changed_map: dict[str, str] = dict()
         changed_vars: set[str] = live_in & def_out
@@ -362,7 +359,7 @@ class _IRCodegenInstance(AstVisitor):
             changed_map[name] = t
         # create the new context for the loop
         loop_ctx: _CtxType = dict()
-        for name in live_loop:
+        for name in ctx:
             if name in changed_map:
                 loop_ctx[name] = changed_map[name]
             else:
@@ -380,7 +377,7 @@ class _IRCodegenInstance(AstVisitor):
         # create new statement and context
         s = ir.WhileStmt(cond, body, phis)
         new_ctx: _CtxType = dict()
-        for name in live_out:
+        for name in ctx:
             if name in changed_map:
                 new_ctx[name] = changed_map[name]
             else:
@@ -395,8 +392,7 @@ class _IRCodegenInstance(AstVisitor):
         ctx = { **ctx, stmt.var: iter_var }
         # merge variables initialized before the block that
         # are updated in the body of the loop
-        live_in, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
-        live_loop, _ = stmt.body.attribs[LiveVarAnalysis.analysis_name]
+        live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
         _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
         # generate fresh variables for all changed variables
         changed_vars: set[str] = live_in & def_out
@@ -406,7 +402,7 @@ class _IRCodegenInstance(AstVisitor):
             changed_map[name] = t
         # create the new context for the loop
         loop_ctx: _CtxType = dict()
-        for name in live_loop:
+        for name in ctx:
             if name in changed_map:
                 loop_ctx[name] = changed_map[name]
             else:
@@ -423,7 +419,7 @@ class _IRCodegenInstance(AstVisitor):
         # create new statement and context
         s = ir.ForStmt(iter_var, ir.AnyType(), cond, body, phis)
         new_ctx: _CtxType = dict()
-        for name in live_out:
+        for name in ctx:
             if name in changed_map:
                 new_ctx[name] = changed_map[name]
             else:

@@ -138,7 +138,7 @@ class LiveVarAnalysisInstance(AstVisitor):
         return ctx | self._visit(stmt.iterable, None)
 
     def _visit_context(self, stmt, ctx: _LiveSet) -> _LiveSet:
-        ctx |= self._visit(stmt.body, set(ctx))
+        ctx = self._visit(stmt.body, set(ctx))
         if stmt.name is not None:
             ctx -= {stmt.name}
         return ctx
