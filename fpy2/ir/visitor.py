@@ -135,6 +135,14 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     #######################################################
+    # Phi node
+
+    @abstractmethod
+    def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
+        """Visitor method for a `list` of `PhiNode` nodes."""
+        raise NotImplementedError('virtual method')
+
+    #######################################################
     # Block
 
     @abstractmethod
@@ -334,6 +342,9 @@ class DefaultVisitor(Visitor):
     def _visit_return(self, stmt: Return, ctx: Any):
         self._visit(stmt.expr, ctx)
 
+    def _visit_phis(self, phis, lctx, rctx):
+        pass
+
     def _visit_block(self, block: Block, ctx: Any):
         for stmt in block.stmts:
             self._visit(stmt, ctx)
@@ -424,7 +435,8 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: Any):
         val = self._visit(stmt.expr, ctx)
-        return VarAssign(stmt.var, stmt.ty, val)
+        s = VarAssign(stmt.var, stmt.ty, val)
+        return s, ctx
 
     def _copy_tuple_binding(self, binding: TupleBinding):
         new_vars: list[str | TupleBinding] = []
@@ -440,60 +452,73 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
         vars = self._copy_tuple_binding(stmt.binding)
         val = self._visit(stmt.expr, ctx)
-        return TupleAssign(vars, stmt.ty, val)
+        s = TupleAssign(vars, stmt.ty, val)
+        return s, ctx
 
     def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
         slices = [self._visit(s, ctx) for s in stmt.slices]
         expr = self._visit(stmt.expr, ctx)
-        return RefAssign(stmt.var, slices, expr)
+        s = RefAssign(stmt.var, slices, expr)
+        return s, ctx
 
     def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
-        body = self._visit(stmt.body, ctx)
-        phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
-        return If1Stmt(cond, body, phis)
+        body, rctx = self._visit_block(stmt.body, ctx)
+        phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
+        s = If1Stmt(cond, body, phis)
+        return s, ctx
 
     def _visit_if_stmt(self, stmt: IfStmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
-        ift = self._visit(stmt.ift, ctx)
-        iff = self._visit(stmt.iff, ctx)
-        phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
-        return IfStmt(cond, ift, iff, phis)
-    
+        ift, lctx = self._visit_block(stmt.ift, ctx)
+        iff, rctx = self._visit_block(stmt.iff, ctx)
+        phis, ctx = self._visit_phis(stmt.phis, lctx, rctx)
+        s = IfStmt(cond, ift, iff, phis)
+        return s, ctx
+
     def _visit_while_stmt(self, stmt: WhileStmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
-        body = self._visit(stmt.body, ctx)
-        phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
-        return WhileStmt(cond, body, phis)
+        body, rctx = self._visit_block(stmt.body, ctx)
+        phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
+        s = WhileStmt(cond, body, phis)
+        return s, ctx
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
         iterable = self._visit(stmt.iterable, ctx)
-        body = self._visit(stmt.body, ctx)
-        phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
-        return ForStmt(stmt.var, stmt.ty, iterable, body, phis)
-    
+        body, rctx = self._visit_block(stmt.body, ctx)
+        phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
+        s = ForStmt(stmt.var, stmt.ty, iterable, body, phis)
+        return s, ctx
+
     def _visit_context(self, stmt: ContextStmt, ctx: Any):
-        body = self._visit(stmt.body, ctx)
-        return ContextStmt(stmt.name, stmt.props.copy(), body)
+        body, ctx = self._visit_block(stmt.body, ctx)
+        s = ContextStmt(stmt.name, stmt.props.copy(), body)
+        return s, ctx
 
     def _visit_return(self, stmt: Return, ctx: Any):
-        return Return(self._visit(stmt.expr, ctx))
+        s = Return(self._visit(stmt.expr, ctx))
+        return s, ctx
 
     #######################################################
     # Phi node
 
-    def _visit_phi(self, phi: PhiNode, ctx: Any):
-        return PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty)
+    def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
+        phis = [PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty) for phi in phis]
+        return phis, lctx
 
     #######################################################
     # Block
 
     def _visit_block(self, block: Block, ctx: Any):
-        return Block([self._visit(s, ctx) for s in block.stmts])
+        stmts: list[Stmt] = []
+        for stmt in block.stmts:
+            stmt, ctx = self._visit(stmt, ctx)
+            stmts.append(stmt)
+        return Block(stmts), ctx
 
     #######################################################
     # Function
 
     def _visit_function(self, func: FunctionDef, ctx: Any):
-        body = self._visit(func.body, ctx)
+        body, _ = self._visit_block(func.body, ctx)
         return FunctionDef(func.name, func.args, body, func.ty, func.ctx)

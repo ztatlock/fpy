@@ -411,6 +411,9 @@ class _Interpreter(ReduceVisitor):
     def _visit_return(self, stmt, ctx: EvalCtx):
         return self._visit(stmt.expr, ctx)
 
+    def _visit_phis(self, phis, lctx, rctx):
+        raise NotImplementedError('do not call directly')
+
     def _visit_block(self, block, ctx: EvalCtx) -> EvalCtx:
         for stmt in block.stmts:
             if isinstance(stmt, Return):

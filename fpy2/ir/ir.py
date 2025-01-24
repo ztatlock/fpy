@@ -535,7 +535,14 @@ class PhiNode(IR):
         self.ty = ty
 
 class If1Stmt(Stmt):
-    """FPy IR: one-armed if statement"""
+    """
+    FPy IR: one-armed if statement
+
+    For each `PhiNode` phi:
+    - `phi.lhs` is the SSA name of the variable entering the block
+    - `phi.rhs` is the SSA name of the variable in the if-true block
+    - `phi.name` is the SSA name of the variable after the block
+    """
     cond: Expr
     body: Block
     phis: list[PhiNode]
@@ -547,7 +554,14 @@ class If1Stmt(Stmt):
         self.phis = phis
 
 class IfStmt(Stmt):
-    """FPy IR: if statement"""
+    """
+    FPy IR: if statement
+
+    For each `PhiNode` phi:
+    - `phi.lhs` is the SSA name of the variable in the if-true block
+    - `phi.rhs` is the SSA name of the variable in the if-false block
+    - `phi.name` is the SSA name of the variable after the block
+    """
     cond: Expr
     ift: Block
     iff: Block
@@ -561,7 +575,15 @@ class IfStmt(Stmt):
         self.phis = phis
 
 class WhileStmt(Stmt):
-    """FPy IR: while statement"""
+    """
+    FPy IR: while statement
+
+    For each `PhiNode` phi:
+    - `phi.lhs` is the SSA name of the variable entering the block
+    - `phi.rhs` is the SSA name of the variable exiting the loop block
+    - `phi.name` is the SSA name of the variable after the block
+    """
+
     cond: Expr
     body: Block
     phis: list[PhiNode]
@@ -573,7 +595,15 @@ class WhileStmt(Stmt):
         self.phis = phis
 
 class ForStmt(Stmt):
-    """FPy IR: for statement"""
+    """
+    FPy IR: for statement
+
+    For each `PhiNode` phi:
+    - `phi.lhs` is the SSA name of the variable entering the block
+    - `phi.rhs` is the SSA name of the variable exiting the loop block
+    - `phi.name` is the SSA name of the variable after the block
+    """
+
     var: str
     ty: IRType
     iterable: Expr

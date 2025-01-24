@@ -42,7 +42,7 @@ class _SSAInstance(DefaultTransformVisitor):
         return VarAssign(name, stmt.ty, e), ctx
 
     def _visit_tuple_binding(self, vars: TupleBinding, ctx: _Ctx):
-        new_vars: list[str | ir.TupleBinding] = []
+        new_vars: list[str | TupleBinding] = []
         for name in vars:
             if isinstance(name, str):
                 # generate a new name if needed
@@ -65,36 +65,9 @@ class _SSAInstance(DefaultTransformVisitor):
         expr = self._visit(e.expr, ctx)
         return TupleAssign(binding, e.ty, expr), ctx
 
-    def _visit_ref_assign(self, stmt, ctx):
-        s = super()._visit_ref_assign(stmt, ctx)
-        return s, ctx
-
-    def _visit_return(self, stmt: Return, ctx: _Ctx):
-        s = super()._visit_return(stmt, ctx)
-        return s, ctx
-
-    def _visit_block(self, block: Block, ctx: _Ctx):
-        stmts: list[Stmt] = []
-        for stmt in block.stmts:
-            stmt, ctx = self._visit_statement(stmt, ctx)
-            stmts.append(stmt)
-        return Block(stmts), ctx
-
-    def _visit_function(self, func: FunctionDef, ctx: _Ctx):
-        ctx = ctx.copy()
-        for arg in func.args:
-            ctx[arg.name] = arg.name
-
-        body, _ = self._visit_block(func.body, ctx)
-        return FunctionDef(func.name, func.args, body, func.ty, func.ctx)
-
     # override to get typing hint
     def _visit(self, e, ctx: _Ctx):
         return super()._visit(e, ctx)
-
-    # override to get typing hint
-    def _visit_statement(self, stmt: Stmt, ctx: _Ctx) -> tuple[Stmt, _Ctx]:
-        return super()._visit_statement(stmt, ctx)
 
 
 class SSA:

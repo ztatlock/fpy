@@ -35,7 +35,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
         else:
             return Var(e.name)
 
-    def _visit_phi(self, phi, ctx):
+    def _make_phi(self, phi: PhiNode, ctx: _CtxType):
         if phi.lhs in ctx:
             lhs = ctx[phi.lhs]
             if not isinstance(lhs, Var):
@@ -46,7 +46,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _CtxType):
         if len(stmt.phis) <= 1:
-            return super()._visit_for_stmt(stmt, set(ctx))
+            return super()._visit_for_stmt(stmt, set(ctx)), None
         else:
             # compile iterable expression
             iterable = self._visit(stmt.iterable, ctx)
@@ -56,7 +56,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
             phi_update = self.gensym.fresh('t')
             phi_node = PhiNode(phi_name, phi_init, phi_update, AnyType())
             # decompose current phi variables
-            phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
+            phis = [self._make_phi(phi, ctx) for phi in stmt.phis]
             phi_names = [phi.name for phi in phis]
             phi_inits = [Var(phi.lhs) for phi in phis]
             phi_updates = [Var(phi.rhs) for phi in phis]
@@ -65,20 +65,20 @@ class _ForBundlingInstance(DefaultTransformVisitor):
             body_ctx = ctx.copy()
             for phi, rename in zip(phis, phi_renamed):
                 body_ctx[phi.name] = Var(rename)
-            body: Block = self._visit(stmt.body, body_ctx)
+            body, _ = self._visit_block(stmt.body, body_ctx)
             # construct the block
             init_stmt = VarAssign(phi_init, AnyType(), TupleExpr(*phi_inits))
             unpack_stmt = TupleAssign(TupleBinding(phi_renamed), AnyType(), Var(phi_name))
             update_stmt = VarAssign(phi_update, AnyType(), TupleExpr(*phi_updates))
             while_stmt = ForStmt(stmt.var, stmt.ty, iterable, Block([unpack_stmt, *body.stmts, update_stmt]), [phi_node])
             unpack_stmt = TupleAssign(TupleBinding(phi_names), AnyType(), Var(phi_name))
-            return Block([init_stmt, while_stmt, unpack_stmt])
+            return Block([init_stmt, while_stmt, unpack_stmt]), None
 
     def _visit_block(self, block: Block, ctx: _CtxType):
         stmts: list[Stmt] = []
         for stmt in block.stmts:
             if isinstance(stmt, ForStmt):
-                stmt_or_block = self._visit_for_stmt(stmt, ctx.copy())
+                stmt_or_block, _ = self._visit_for_stmt(stmt, ctx.copy())
                 if isinstance(stmt_or_block, Stmt):
                     stmts.append(stmt_or_block)
                 elif isinstance(stmt_or_block, Block):
@@ -86,8 +86,9 @@ class _ForBundlingInstance(DefaultTransformVisitor):
                 else:
                     raise NotImplementedError('unexpected', stmt_or_block)
             else:
-                stmts.append(self._visit(stmt, ctx.copy()))
-        return Block(stmts)
+                stmt, _ = self._visit(stmt, ctx.copy())
+                stmts.append(stmt)
+        return Block(stmts), None
 
 class ForBundling:
     """

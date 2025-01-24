@@ -30,14 +30,14 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
             stmts.append(VarAssign(t, BoolType(), cond))
             cond = Var(t)
         # inline body
-        body = self._visit_block(stmt.body, ctx)
+        body, _ = self._visit_block(stmt.body, ctx)
         stmts.extend(body.stmts)
         # convert phi nodes into if expressions
         for phi in stmt.phis:
             ife = IfExpr(cond, Var(phi.rhs), Var(phi.lhs))
             stmts.append(VarAssign(phi.name, AnyType(), ife))
         return Block(stmts)
-    
+
     def _visit_if_stmt(self, stmt: IfStmt, ctx):
         stmts: list[Stmt] = []
         # compile condition
@@ -48,10 +48,10 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
             stmts.append(VarAssign(t, BoolType(), cond))
             cond = Var(t)
         # inline if-true block
-        ift = self._visit_block(stmt.ift, ctx)
+        ift, _ = self._visit_block(stmt.ift, ctx)
         stmts.extend(ift.stmts)
         # inline if-false block
-        iff = self._visit_block(stmt.iff, ctx)
+        iff, _ = self._visit_block(stmt.iff, ctx)
         stmts.extend(iff.stmts)
         # convert phi nodes into if expressions
         for phi in stmt.phis:
@@ -70,8 +70,9 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
                     if_block = self._visit_if_stmt(stmt, ctx)
                     stmts.extend(if_block.stmts)
                 case _:
-                    stmts.append(self._visit(stmt, ctx))
-        return Block(stmts)
+                    stmt, _ = self._visit(stmt, ctx)
+                    stmts.append(stmt)
+        return Block(stmts), None
 
 
 class SimplifyIf:
