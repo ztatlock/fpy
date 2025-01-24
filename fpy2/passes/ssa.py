@@ -61,9 +61,75 @@ class _SSAInstance(DefaultTransformVisitor):
         return TupleBinding(new_vars), ctx
 
     def _visit_tuple_assign(self, e: TupleAssign, ctx: _Ctx):
-        binding, ctx = self._visit_tuple_binding(e.binding, ctx)
         expr = self._visit(e.expr, ctx)
+        binding, ctx = self._visit_tuple_binding(e.binding, ctx)
         return TupleAssign(binding, e.ty, expr), ctx
+
+    def _visit_phis(self, phis, lctx: _Ctx, rctx: _Ctx):
+        # visting a merge point after visiting both branches
+        # generate a new name if needed
+        phi_names: dict[str, str] = {}
+        for phi in phis:
+            if phi.name in lctx or phi.name in rctx:
+                name = self.gensym.fresh('t')
+                phi_names[phi.name] = name
+            else:
+                phi_names[phi.name] = phi.name
+
+        # create new phi variables
+        new_phis: list[PhiNode] = []
+        for phi in phis:
+            name = phi_names[phi.name]
+            lhs = self._resolve(phi.lhs, lctx)
+            rhs = self._resolve(phi.rhs, rctx)
+            new_phis.append(PhiNode(name, lhs, rhs, phi.ty))
+
+        # merge contexts
+        ctx = { **lctx, **rctx }
+        for name in phi_names:
+            ctx[name] = phi_names[name]
+
+        print(phis, lctx, rctx, new_phis, ctx)
+        return new_phis, ctx
+
+    def _visit_loop_phis(self, phis, lctx: _Ctx, rctx: Optional[_Ctx]):
+        new_phis: list[PhiNode] = []
+        if rctx is None:
+            # visiting join point before visiting loop body
+            phi_names: dict[str, str] = {}
+            for phi in phis:
+                if phi.name in lctx:
+                    name = self.gensym.fresh('t')
+                    phi_names[phi.name] = name
+                else:
+                    phi_names[phi.name] = phi.name
+
+            # create new phi variables
+            for phi in phis:
+                name = phi_names[phi.name]
+                lhs = self._resolve(phi.lhs, lctx)
+                new_phis.append(PhiNode(name, lhs, phi.rhs, phi.ty))
+
+            # create context
+            ctx = { **lctx }
+            for name in phi_names:
+                ctx[name] = phi_names[name]
+        else:
+            # re-visiting join point after visiting loop body
+            # only `rctx` will be different
+
+            # create new phi variables
+            for phi in phis:
+                name = phi.name
+                lhs = self._resolve(phi.lhs, lctx)
+                rhs = self._resolve(phi.rhs, rctx)
+                new_phis.append(PhiNode(name, lhs, rhs, phi.ty))
+
+            # merge contexts
+            ctx = { **lctx, **rctx }
+
+        print(phis, lctx, rctx, new_phis, ctx)
+        return new_phis, ctx
 
     # override to get typing hint
     def _visit(self, e, ctx: _Ctx):
@@ -85,6 +151,8 @@ class SSA:
         if names is None:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())
-        ir = _SSAInstance(func, names).apply()
-        VerifyIR.check(ir)
-        return ir
+        print(func)
+        func = _SSAInstance(func, names).apply()
+        print(func)
+        VerifyIR.check(func)
+        return func

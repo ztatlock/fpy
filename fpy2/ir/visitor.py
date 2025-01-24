@@ -138,8 +138,24 @@ class BaseVisitor(ABC):
     # Phi node
 
     @abstractmethod
-    def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
-        """Visitor method for a `list` of `PhiNode` nodes."""
+    def _visit_phis(self, phi: list[PhiNode], lctx: Any, rctx: Any):
+        """
+        Visitor method for a `list` of `PhiNode` nodes for non-loop nodes.
+
+        This method is called at the join point of a control flow graph
+        when _both_ branches have already been visited.
+        """
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
+    def _visit_loop_phis(self, phi: list[PhiNode], lctx: Any, rctx: Optional[Any]):
+        """
+        Visitor method for a `list` of `PhiNode` nodes for loop nodes.
+
+        For loop nodes, this method is called twice:
+        - once before visiting the loop body / condition (`rctx` is `None`)
+        - once after visiting the loop body
+        """
         raise NotImplementedError('virtual method')
 
     #######################################################
@@ -345,6 +361,9 @@ class DefaultVisitor(Visitor):
     def _visit_phis(self, phis, lctx, rctx):
         pass
 
+    def _visit_loop_phis(self, phi, lctx, rctx):
+        pass
+
     def _visit_block(self, block: Block, ctx: Any):
         for stmt in block.stmts:
             self._visit(stmt, ctx)
@@ -477,16 +496,20 @@ class DefaultTransformVisitor(TransformVisitor):
         return s, ctx
 
     def _visit_while_stmt(self, stmt: WhileStmt, ctx: Any):
-        cond = self._visit(stmt.cond, ctx)
-        body, rctx = self._visit_block(stmt.body, ctx)
-        phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
+        init_phis, init_ctx = self._visit_loop_phis(stmt.phis, ctx, None)
+        cond = self._visit(stmt.cond, init_ctx)
+        body, rctx = self._visit_block(stmt.body, init_ctx)
+
+        phis, ctx = self._visit_loop_phis(init_phis, ctx, rctx)
         s = WhileStmt(cond, body, phis)
         return s, ctx
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
         iterable = self._visit(stmt.iterable, ctx)
-        body, rctx = self._visit_block(stmt.body, ctx)
-        phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
+        init_phis, init_ctx = self._visit_loop_phis(stmt.phis, ctx, None)
+        body, rctx = self._visit_block(stmt.body, init_ctx)
+
+        phis, ctx = self._visit_loop_phis(init_phis, ctx, rctx)
         s = ForStmt(stmt.var, stmt.ty, iterable, body, phis)
         return s, ctx
 
@@ -504,7 +527,11 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
         phis = [PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty) for phi in phis]
-        return phis, lctx
+        return phis, lctx # merge function just selects `lctx`
+    
+    def _visit_loop_phis(self, phis: list[PhiNode], lctx: Any, rctx: Optional[Any]):
+        phis = [PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty) for phi in phis]
+        return phis, lctx # merge function just selects `lctx`
 
     #######################################################
     # Block

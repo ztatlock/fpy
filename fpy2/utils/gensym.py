@@ -39,3 +39,7 @@ class Gensym(object):
 
     def __len__(self):
         return len(self._names)
+
+    @property
+    def names(self):
+        return set(self._names)
