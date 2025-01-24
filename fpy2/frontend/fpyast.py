@@ -2,7 +2,7 @@
 This module contains the AST for FPy programs.
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, Self, Sequence
@@ -48,6 +48,12 @@ class Ast(ABC):
         name = self.__class__.__name__
         items = ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())
         return f'{name}({items})'
+
+    def format(self) -> str:
+        """Format the AST node as a string."""
+        formatter = get_default_formatter()
+        return formatter.format(self)
+
 
 class TypeAnn(Ast):
     """FPy AST: typing annotation"""
@@ -208,6 +214,10 @@ class UnaryOpKind(Enum):
     # unary generator
     RANGE = 39
 
+    def __str__(self):
+        return self.name.lower()
+
+
 class UnaryOp(Expr):
     """FPy AST: unary operation"""
     op: UnaryOpKind
@@ -239,6 +249,10 @@ class BinaryOpKind(Enum):
     HYPOT = 10
     ATAN2 = 11
     POW = 12
+
+    def __str__(self):
+        return self.name.lower()
+
 
 class BinaryOp(Expr):
     """FPy AST: binary operation"""
@@ -606,3 +620,27 @@ class FunctionDef(Ast):
         self.body = body
         self.ctx = {}
         self.globals = {}
+
+
+class BaseFormatter:
+    """Abstract base class for AST formatters."""
+
+    @abstractmethod
+    def format(self, ast: Ast) -> str:
+        raise NotImplementedError('virtual method')
+
+_default_formatter: Optional[BaseFormatter] = None
+
+def get_default_formatter() -> BaseFormatter:
+    """Get the default formatter for FPy AST."""
+    global _default_formatter
+    if _default_formatter is None:
+        raise RuntimeError('no default formatter available')
+    return _default_formatter
+
+def set_default_formatter(formatter: BaseFormatter):
+    """Set the default formatter for FPy AST."""
+    global _default_formatter
+    if not isinstance(formatter, BaseFormatter):
+        raise TypeError(f'expected BaseFormatter, got {formatter}')
+    _default_formatter = formatter

@@ -265,9 +265,9 @@ class _FPCore2FPy:
             init_e = self._visit(init, init_ctx)
             # bind value to variable
             t = self.gensym.fresh(var)
+            env = { **env, var: t }
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
-            env = { **env, var: t }
 
         # compile condition
         cond_ctx = _Ctx(env=env, stmts=ctx.stmts)
@@ -278,9 +278,8 @@ class _FPCore2FPy:
         update_ctx = _Ctx(env=env, stmts=stmts)
         for var, _, update in e.while_bindings:
             # compile value and update loop variable
-            t = env[var]
             update_e = self._visit(update, update_ctx)
-            stmt = VarAssign(t, update_e, None, None)
+            stmt = VarAssign(env[var], update_e, None, None)
             stmts.append(stmt)
 
         # append while statement
@@ -372,9 +371,7 @@ class _FPCore2FPy:
         block = Block(val_ctx.stmts + [VarAssign(t, val, None, None)])
         stmt = ContextStmt(None, dict(e.props), block, None)
         ctx.stmts.append(stmt)
-
         return Var(t, None)
-
 
     def _visit(self, e: fpc.Expr, ctx: _Ctx) -> Expr:
         match e:
@@ -456,7 +453,7 @@ class _FPCore2FPy:
 
 def fpcore_to_fpy(core: fpc.FPCore):
     ast = _FPCore2FPy(core).convert()
-    print(ast)
+    print(ast.format())
 
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)

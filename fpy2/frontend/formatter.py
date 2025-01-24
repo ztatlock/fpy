@@ -1,0 +1,201 @@
+"""Pretty printing of FPy ASTs"""
+
+from .fpyast import *
+from .visitor import AstVisitor
+
+_Ctx = int
+
+class _FormatterInstance(AstVisitor):
+    """Single-instance visitor for pretty printing FPy ASTs"""
+    ast: Ast
+    fmt: str
+
+    def __init__(self, ast: Ast):
+        self.ast = ast
+        self.fmt = ''
+
+    def apply(self) -> str:
+        self._visit(self.ast, 0)
+        return self.fmt.strip()
+
+    def _add_line(self, line: str, indent: int):
+        self.fmt += '    ' * indent + line + '\n'
+
+    def _visit_var(self, e, ctx: _Ctx):
+        return e.name
+
+    def _visit_decnum(self, e, ctx: _Ctx):
+        return e.val
+
+    def _visit_hexnum(self, e, ctx: _Ctx):
+        return e.val
+
+    def _visit_integer(self, e, ctx: _Ctx):
+        return str(e.val)
+
+    def _visit_rational(self, e, ctx: _Ctx):
+        return f'{e.p}/{e.q}'
+
+    def _visit_digits(self, e, ctx: _Ctx):
+        return f'digits({e.m}, {e.e}, {e.b})'
+
+    def _visit_constant(self, e, ctx: _Ctx):
+        return e.val
+
+    def _visit_unaryop(self, e, ctx: _Ctx):
+        arg = self._visit(e.arg, ctx)
+        match e.op:
+            case UnaryOpKind.NEG:
+                return f'-{arg}'
+            case UnaryOpKind.NOT:
+                return f'not {arg}'
+            case _:
+                return f'{str(e.op)}({arg})'
+
+    def _visit_binaryop(self, e, ctx: _Ctx):
+        lhs = self._visit(e.left, ctx)
+        rhs = self._visit(e.right, ctx)
+        match e.op:
+            case BinaryOpKind.ADD:
+                return f'({lhs} + {rhs})'
+            case BinaryOpKind.SUB:
+                return f'({lhs} - {rhs})'
+            case BinaryOpKind.MUL:
+                return f'({lhs} * {rhs})'
+            case BinaryOpKind.DIV:
+                return f'({lhs} / {rhs})'
+            case _:
+                return f'{str(e.op)}({lhs}, {rhs})'
+
+    def _visit_ternaryop(self, e, ctx: _Ctx):
+        arg0 = self._visit(e.arg0, ctx)
+        arg1 = self._visit(e.arg1, ctx)
+        arg2 = self._visit(e.arg2, ctx)
+        match e.op:
+            case TernaryOpKind.FMA:
+                return f'fma({arg0}, {arg1}, {arg2})'
+            case _:
+                return f'{str(e.op)}({arg0}, {arg1}, {arg2})'
+
+    def _visit_naryop(self, e, ctx: _Ctx):
+        args = [self._visit(arg, ctx) for arg in e.args]
+        match e.op:
+            case NaryOpKind.AND:
+                return f' and '.join(args)
+            case NaryOpKind.OR:
+                return f' or '.join(args)
+            case _:
+                return f'{str(e.op)}({", ".join(args)})'
+
+    def _visit_compare(self, e, ctx: _Ctx):
+        first = self._visit(e.args[0], ctx)
+        rest = [self._visit(arg, ctx) for arg in e.args[1:]]
+        s = ' '.join(f'{op.symbol()} {arg}' for op, arg in zip(e.ops, rest))
+        return f'{first} {s}'
+
+    def _visit_call(self, e, ctx: _Ctx):
+        raise NotImplementedError(e)
+
+    def _visit_tuple_expr(self, e, ctx: _Ctx):
+        elts = [self._visit(elt, ctx) for elt in e.args]
+        return f'({", ".join(elts)})'
+
+    def _visit_comp_expr(self, e, ctx: _Ctx):
+        elt = self._visit(e.elt, ctx)
+        iterables = [self._visit(iterable, ctx) for iterable in e.iterables]
+        s = ' '.join(f'for {var} in {iterable}' for var, iterable in zip(e.vars, iterables))
+        return f'[{elt} {s}]'
+
+    def _visit_ref_expr(self, e, ctx: _Ctx):
+        value = self._visit(e.value, ctx)
+        slices = [self._visit(slice, ctx) for slice in e.slices]
+        ref_str = ''.join(f'[{slice}]' for slice in slices)
+        return f'{value}{ref_str}'
+
+    def _visit_if_expr(self, e, ctx: _Ctx):
+        cond = self._visit(e.cond, ctx)
+        ift = self._visit(e.ift, ctx)
+        iff = self._visit(e.iff, ctx)
+        return f'({ift} if {cond} else {iff})'
+
+    def _visit_var_assign(self, stmt, ctx: _Ctx):
+        val = self._visit(stmt.expr, ctx)
+        self._add_line(f'{stmt.var} = {val}', ctx)
+
+    def _visit_tuple_binding(self, vars: TupleBinding):
+        ss: list[str] = []
+        for var in vars:
+            if isinstance(var, str):
+                ss.append(var)
+            else:
+                s = self._visit_tuple_binding(var)
+                ss.append(f'({s})')
+        return ', '.join(ss)
+
+    def _visit_tuple_assign(self, stmt, ctx: _Ctx):
+        val = self._visit(stmt.expr, ctx)
+        vars = self._visit_tuple_binding(stmt.binding)
+        self._add_line(f'{vars} = {val}', ctx)
+
+    def _visit_ref_assign(self, stmt, ctx: _Ctx):
+        slices = [self._visit(slice, ctx) for slice in stmt.slices]
+        val = self._visit(stmt.expr, ctx)
+        ref_str = ''.join(f'[{slice}]' for slice in slices)
+        self._add_line(f'{stmt.var}{ref_str} = {val}', ctx)
+
+    def _visit_if_stmt(self, stmt, ctx: _Ctx):
+        cond = self._visit(stmt.cond, ctx)
+        self._add_line(f'if {cond}:', ctx)
+        self._visit(stmt.ift, ctx + 1)
+        if stmt.iff:
+            self._add_line('else:', ctx)
+            self._visit(stmt.iff, ctx + 1)
+
+    def _visit_while_stmt(self, stmt, ctx: _Ctx):
+        cond = self._visit(stmt.cond, ctx)
+        self._add_line(f'while {cond}:', ctx)
+        self._visit(stmt.body, ctx + 1)
+
+    def _visit_for_stmt(self, stmt, ctx: _Ctx):
+        iterable = self._visit(stmt.iterable, ctx)
+        self._add_line(f'for {stmt.var} in {iterable}:', ctx)
+        self._visit(stmt.body, ctx + 1)
+
+    def _visit_context(self, stmt, ctx: _Ctx):
+        # TODO: format data
+        props = ', '.join(f'{k}={v}' for k, v in stmt.props.items())
+        self._add_line(f'with Context({props}):', ctx)
+        self._visit(stmt.body, ctx + 1)
+
+    def _visit_return(self, stmt, ctx: _Ctx):
+        s = self._visit(stmt.expr, ctx)
+        self._add_line(f'return {s}', ctx)
+
+    def _visit_block(self, block, ctx: _Ctx):
+        for stmt in block.stmts:
+            self._visit(stmt, ctx)
+
+    def _visit_function(self, func, ctx: _Ctx):
+        # TODO: type annotation
+        if func.name is None:
+            name = 'unnamed'
+        else:
+            name = func.name
+
+        arg_strs: list[str] = []
+        for arg in func.args:
+            arg_strs.append(arg.name)
+
+        arg_str = ', '.join(arg_strs)
+        self._add_line(f'def {name}({arg_str}):', ctx)
+        self._visit(func.body, ctx + 1)
+
+
+class Formatter(BaseFormatter):
+    """"Pretty printer for FPy AST"""
+
+    def format(self, ast: Ast) -> str:
+        """Pretty print the given AST"""
+        return _FormatterInstance(ast).apply()
+
+
