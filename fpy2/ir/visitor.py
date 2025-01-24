@@ -67,8 +67,13 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
-    def _visit_ref_expr(self, e: RefExpr, ctx: Any):
+    def _visit_tuple_ref(self, e: TupleRef, ctx: Any):
         """Visitor method for `RefExpr` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
+    def _visit_tuple_set(self, e: TupleSet, ctx: Any):
+        """Visitor method for `TupleSet` nodes."""
         raise NotImplementedError('virtual method')
 
     @abstractmethod
@@ -173,8 +178,10 @@ class BaseVisitor(ABC):
                 return self._visit_compare(e, ctx)
             case TupleExpr():
                 return self._visit_tuple_expr(e, ctx)
-            case RefExpr():
-                return self._visit_ref_expr(e, ctx)
+            case TupleRef():
+                return self._visit_tuple_ref(e, ctx)
+            case TupleSet():
+                return self._visit_tuple_set(e, ctx)
             case CompExpr():
                 return self._visit_comp_expr(e, ctx)
             case IfExpr():
@@ -272,10 +279,16 @@ class DefaultVisitor(Visitor):
         for c in e.children:
             self._visit(c, ctx)
 
-    def _visit_ref_expr(self, e: RefExpr, ctx: Any):
+    def _visit_tuple_ref(self, e: TupleRef, ctx: Any):
         self._visit(e.value, ctx)
         for s in e.slices:
             self._visit(s, ctx)
+
+    def _visit_tuple_set(self, e: TupleSet, ctx: Any):
+        self._visit(e.array, ctx)
+        for s in e.slices:
+            self._visit(s, ctx)
+        self._visit(e.value, ctx)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: Any):
         for iterable in e.iterables:
@@ -380,14 +393,20 @@ class DefaultTransformVisitor(TransformVisitor):
         ops = [op for op in e.ops]
         children = [self._visit(c, ctx) for c in e.children]
         return Compare(ops, children)
-    
+
     def _visit_tuple_expr(self, e, ctx):
         return TupleExpr(*[self._visit(c, ctx) for c in e.children])
 
-    def _visit_ref_expr(self, e, ctx):
+    def _visit_tuple_ref(self, e, ctx):
         value = self._visit(e.value, ctx)
         slices = [self._visit(s, ctx) for s in e.slices]
-        return RefExpr(value, *slices)
+        return TupleRef(value, *slices)
+
+    def _visit_tuple_set(self, e, ctx):
+        value = self._visit(e.array, ctx)
+        slices = [self._visit(s, ctx) for s in e.slices]
+        expr = self._visit(e.value, ctx)
+        return TupleSet(value, slices, expr)
 
     def _visit_comp_expr(self, e, ctx):
         iterables = [self._visit(iterable, ctx) for iterable in e.iterables]

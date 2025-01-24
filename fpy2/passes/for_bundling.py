@@ -97,7 +97,7 @@ class ForBundling:
     into a single variable. This transformation ensures there is only
     one phi node per while loop.
     """
-    
+
     @staticmethod
     def apply(func: FunctionDef, names: Optional[set[str]] = None) -> FunctionDef:
         if names is None:

@@ -513,5 +513,5 @@ for core in cores:
     assert isinstance(core, Function)
     args = [1.0 for _ in range(len(core.args))]
     print(core.name, fn(*args))
-    fpc = comp.compile(core.ir)
+    fpc = comp.compile(core)
     print(fpc)

@@ -428,8 +428,8 @@ class CompExpr(Expr):
         self.iterables = list(iterables)
         self.elt = elt
 
-class RefExpr(Expr):
-    """FPy node: ref expression"""
+class TupleRef(Expr):
+    """FPy node: tuple ref expression"""
     value: Expr
     slices: list[Expr]
 
@@ -437,6 +437,18 @@ class RefExpr(Expr):
         super().__init__()
         self.value = value
         self.slices = list(slices)
+
+class TupleSet(Expr):
+    """FPy node: tuple set expression (functional update)"""
+    array: Expr
+    slices: list[Expr]
+    value: Expr
+
+    def __init__(self, array: Expr, slices: Sequence[Expr], value: Expr):
+        super().__init__()
+        self.array = array
+        self.slices = list(slices)
+        self.value = value
 
 class IfExpr(Expr):
     """FPy node: if expression (ternary)"""

@@ -62,7 +62,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
             # compile condition with new context
             cond_ctx = ctx.copy()
             for i, phi in enumerate(phis):
-                cond_ctx[phi.name] = RefExpr(Var(phi_name), Integer(i))
+                cond_ctx[phi.name] = TupleRef(Var(phi_name), Integer(i))
             cond: Expr = self._visit(stmt.cond, cond_ctx)
             # compile body with new context
             body_ctx = ctx.copy()

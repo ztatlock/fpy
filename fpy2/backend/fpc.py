@@ -4,6 +4,7 @@ from typing import Optional
 
 import titanfp.fpbench.fpcast as fpc 
 
+from ..runtime import Function
 from ..passes import *
 from ..ir import *
 from ..utils import Gensym
@@ -211,10 +212,13 @@ class FPCoreCompileInstance(ReduceVisitor):
     def _visit_tuple_expr(self, e, ctx) -> fpc.Expr:
         return fpc.Array(*[self._visit(c, ctx) for c in e.children])
 
-    def _visit_ref_expr(self, e, ctx) -> fpc.Expr:
+    def _visit_tuple_ref(self, e, ctx) -> fpc.Expr:
         value = self._visit(e.value, ctx)
         slices = [self._visit(s, ctx) for s in e.slices]
         return fpc.Ref(value, *slices)
+
+    def _visit_tuple_set(self, e, ctx):
+        raise NotImplementedError('unimplemented', e)
 
     def _visit_comp_expr(self, e, ctx) -> fpc.Expr:
         if len(e.vars) == 1:
@@ -303,7 +307,7 @@ class FPCoreCompileInstance(ReduceVisitor):
         return fpc.Let([tuple_bind] + destruct_bindings, ctx)
 
     def _visit_ref_assign(self, stmt: RefAssign, ctx: fpc.Expr):
-        raise NotImplementedError('unimplemented')
+        raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
 
     def _visit_if1_stmt(self, stmt, ctx):
         raise FPCoreCompileError(f'cannot compile to FPCore: {type(stmt).__name__}')
@@ -382,8 +386,13 @@ class FPCoreCompileInstance(ReduceVisitor):
 class FPCoreCompiler:
     """Compiler from FPy IR to FPCore"""
 
-    def compile(self, func: FunctionDef) -> fpc.FPCore:
-        func = ForBundling.apply(func)
-        func = WhileBundling.apply(func)
-        func = SimplifyIf.apply(func)
-        return FPCoreCompileInstance(func).compile()
+    def compile(self, func: Function) -> fpc.FPCore:
+        ir = func.ir
+
+        # normalization passes
+        ir = FuncUpdate.apply(ir)
+        ir = ForBundling.apply(ir)
+        ir = WhileBundling.apply(ir)
+        ir = SimplifyIf.apply(ir)
+    
+        return FPCoreCompileInstance(ir).compile()

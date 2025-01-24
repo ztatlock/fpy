@@ -64,6 +64,5 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     ir = IRCodegen.lower(ast)
     VerifyIR.check(ir)
 
-
     # wrap the IR in a Function
     return Function(ir, func.__globals__)
