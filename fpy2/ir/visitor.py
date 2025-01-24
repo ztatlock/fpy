@@ -348,31 +348,31 @@ class DefaultTransformVisitor(TransformVisitor):
     #######################################################
     # Expressions
 
-    def _visit_var(self, e, ctx):
+    def _visit_var(self, e: Var, ctx: Any):
         return Var(e.name)
 
-    def _visit_decnum(self, e, ctx: Any):
+    def _visit_decnum(self, e: Decnum, ctx: Any):
         return Decnum(e.val)
 
-    def _visit_hexnum(self, e, ctx: Any):
+    def _visit_hexnum(self, e: Hexnum, ctx: Any):
         return Hexnum(e.val)
 
-    def _visit_integer(self, e, ctx: Any):
+    def _visit_integer(self, e: Integer, ctx: Any):
         return Integer(e.val)
 
-    def _visit_rational(self, e, ctx: Any):
+    def _visit_rational(self, e: Rational, ctx: Any):
         return Rational(e.p, e.q)
 
-    def _visit_digits(self, e, ctx: Any):
+    def _visit_digits(self, e: Digits, ctx: Any):
         return Digits(e.m, e.e, e.b)
 
-    def _visit_constant(self, e, ctx):
-        raise Constant(e.val)
+    def _visit_constant(self, e: Constant, ctx: Any):
+        return Constant(e.val)
 
-    def _visit_unknown(self, e, ctx: Any):
+    def _visit_unknown(self, e: UnknownCall, ctx: Any):
         return UnknownCall(*[self._visit(c, ctx) for c in e.children])
 
-    def _visit_nary_expr(self, e, ctx: Any):
+    def _visit_nary_expr(self, e: NaryExpr, ctx: Any):
         match e:
             case UnaryExpr():
                 arg0 = self._visit(e.children[0], ctx)
@@ -389,31 +389,31 @@ class DefaultTransformVisitor(TransformVisitor):
             case _:
                 raise NotImplementedError('unreachable', e)
 
-    def _visit_compare(self, e, ctx: Any):
+    def _visit_compare(self, e: Compare, ctx: Any):
         ops = [op for op in e.ops]
         children = [self._visit(c, ctx) for c in e.children]
         return Compare(ops, children)
 
-    def _visit_tuple_expr(self, e, ctx):
+    def _visit_tuple_expr(self, e: TupleExpr, ctx: Any):
         return TupleExpr(*[self._visit(c, ctx) for c in e.children])
 
-    def _visit_tuple_ref(self, e, ctx):
+    def _visit_tuple_ref(self, e: TupleRef, ctx: Any):
         value = self._visit(e.value, ctx)
         slices = [self._visit(s, ctx) for s in e.slices]
         return TupleRef(value, *slices)
 
-    def _visit_tuple_set(self, e, ctx):
+    def _visit_tuple_set(self, e: TupleSet, ctx: Any):
         value = self._visit(e.array, ctx)
         slices = [self._visit(s, ctx) for s in e.slices]
         expr = self._visit(e.value, ctx)
         return TupleSet(value, slices, expr)
 
-    def _visit_comp_expr(self, e, ctx):
+    def _visit_comp_expr(self, e: CompExpr, ctx: Any):
         iterables = [self._visit(iterable, ctx) for iterable in e.iterables]
         elt = self._visit(e.elt, ctx)
         return CompExpr(e.vars, iterables, elt)
 
-    def _visit_if_expr(self, e, ctx: Any):
+    def _visit_if_expr(self, e: IfExpr, ctx: Any):
         cond = self._visit(e.cond, ctx)
         ift = self._visit(e.ift, ctx)
         iff = self._visit(e.iff, ctx)
@@ -422,7 +422,7 @@ class DefaultTransformVisitor(TransformVisitor):
     #######################################################
     # Statements
 
-    def _visit_var_assign(self, stmt, ctx: Any):
+    def _visit_var_assign(self, stmt: VarAssign, ctx: Any):
         val = self._visit(stmt.expr, ctx)
         return VarAssign(stmt.var, stmt.ty, val)
 
@@ -437,46 +437,46 @@ class DefaultTransformVisitor(TransformVisitor):
                 raise NotImplementedError('unexpected tuple element', elt)
         return TupleBinding(new_vars)
 
-    def _visit_tuple_assign(self, stmt, ctx: Any):
+    def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
         vars = self._copy_tuple_binding(stmt.binding)
         val = self._visit(stmt.expr, ctx)
         return TupleAssign(vars, stmt.ty, val)
 
-    def _visit_ref_assign(self, stmt, ctx: Any):
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
         slices = [self._visit(s, ctx) for s in stmt.slices]
         expr = self._visit(stmt.expr, ctx)
         return RefAssign(stmt.var, slices, expr)
 
-    def _visit_if1_stmt(self, stmt, ctx):
+    def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
         body = self._visit(stmt.body, ctx)
         phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
         return If1Stmt(cond, body, phis)
 
-    def _visit_if_stmt(self, stmt, ctx: Any):
+    def _visit_if_stmt(self, stmt: IfStmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
         ift = self._visit(stmt.ift, ctx)
         iff = self._visit(stmt.iff, ctx)
         phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
         return IfStmt(cond, ift, iff, phis)
     
-    def _visit_while_stmt(self, stmt, ctx):
+    def _visit_while_stmt(self, stmt: WhileStmt, ctx: Any):
         cond = self._visit(stmt.cond, ctx)
         body = self._visit(stmt.body, ctx)
         phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
         return WhileStmt(cond, body, phis)
 
-    def _visit_for_stmt(self, stmt, ctx):
+    def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
         iterable = self._visit(stmt.iterable, ctx)
         body = self._visit(stmt.body, ctx)
         phis = [self._visit_phi(phi, ctx) for phi in stmt.phis]
         return ForStmt(stmt.var, stmt.ty, iterable, body, phis)
     
-    def _visit_context(self, stmt, ctx):
+    def _visit_context(self, stmt: ContextStmt, ctx: Any):
         body = self._visit(stmt.body, ctx)
         return ContextStmt(stmt.name, stmt.props.copy(), body)
 
-    def _visit_return(self, stmt, ctx: Any):
+    def _visit_return(self, stmt: Return, ctx: Any):
         return Return(self._visit(stmt.expr, ctx))
 
     #######################################################
@@ -494,6 +494,6 @@ class DefaultTransformVisitor(TransformVisitor):
     #######################################################
     # Function
 
-    def _visit_function(self, func, ctx: Any):
+    def _visit_function(self, func: FunctionDef, ctx: Any):
         body = self._visit(func.body, ctx)
         return FunctionDef(func.name, func.args, body, func.ty, func.ctx)

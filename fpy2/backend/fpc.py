@@ -80,6 +80,10 @@ def _nary_mul(args: list[fpc.Expr]):
             e = fpc.Mul(e, arg)
         return e
 
+def _size0_expr(e: fpc.Expr):
+    return fpc.Size(e, fpc.Integer(0))
+
+
 class FPCoreCompileInstance(ReduceVisitor):
     """Compilation instance from FPy to FPCore"""
     func: FunctionDef
@@ -94,7 +98,7 @@ class FPCoreCompileInstance(ReduceVisitor):
         f = self._visit(self.func, None)
         assert isinstance(f, fpc.FPCore), 'unexpected result type'
         return f
-    
+
     def _compile_arg(self, arg: Argument):
         match arg.ty:
             case RealType():
@@ -217,8 +221,67 @@ class FPCoreCompileInstance(ReduceVisitor):
         slices = [self._visit(s, ctx) for s in e.slices]
         return fpc.Ref(value, *slices)
 
-    def _visit_tuple_set(self, e, ctx):
-        raise NotImplementedError('unimplemented', e)
+    def _generate_tuple_set(self, tuple_id: str, iter_id: str, idx_ids: list[str], val_id: str):
+        # dimension bindings
+        idx_id = idx_ids[0]
+        tensor_dims = [(iter_id, _size0_expr(tuple_id))]
+        # generate if expression
+        cond_expr = fpc.EQ(fpc.Var(iter_id), fpc.Var(idx_id))
+        iff_expr = fpc.Ref(fpc.Var(tuple_id), fpc.Var(idx_id))
+        if len(idx_ids) == 1:
+            ift_expr = fpc.Var(val_id)
+        else:
+            let_bindings = [(tuple_id, fpc.Ref(fpc.Var(tuple_id), fpc.Var(idx_id)))]
+            rec_expr = self._generate_tuple_set(tuple_id, iter_id, idx_ids[1:], val_id)
+            ift_expr = fpc.Let(let_bindings, rec_expr)
+        if_expr = fpc.If(cond_expr, ift_expr, iff_expr)
+        return fpc.Tensor(tensor_dims, if_expr)
+
+    def _visit_tuple_set(self, e, ctx) -> fpc.Expr:
+        # general case:
+        # 
+        #   (let ([t <tuple>] [i0 <index>] ... [v <value>]))
+        #     (tensor ([k (size t 0)])
+        #       (if (= k i)
+        #           (let ([t (ref t i0)])
+        #             <recurse with i1, ...>)
+        #           (ref t i0)
+        #
+        # where <recurse with i1, ...> is
+        #
+        #   (tensor ([k (size t 0)])
+        #     (if (= k i1)
+        #         (let ([t (ref t i1)])
+        #           <recurse with i2, ...>)
+        #         (ref t i1)
+        #
+        # and <recurse with iN> is
+        #
+        #   (tensor ([k (size t 0)])
+        #     (if (= k iN) v (ref t iN))
+        #
+
+        # generate temporary variables
+        tuple_id = self.gensym.fresh('t')
+        idx_ids = [self.gensym.fresh('i') for _ in e.slices]
+        iter_id = self.gensym.fresh('k')
+        val_id = self.gensym.fresh('v')
+
+        # compile each component
+        tuple_expr = self._visit(e.array, ctx)
+        idx_exprs = [self._visit(idx, ctx) for idx in e.slices]
+        val_expr = self._visit(e.value, ctx)
+
+        # create initial let binding
+        let_bindings = [(tuple_id, tuple_expr)]
+        for idx_id, idx_expr in zip(idx_ids, idx_exprs):
+            let_bindings.append((idx_id, idx_expr))
+        let_bindings.append((val_id, val_expr))
+
+        # recursively generate tensor expressions
+        tensor_expr = self._generate_tuple_set(tuple_id, iter_id, idx_ids, val_id)
+        return fpc.Let(let_bindings, tensor_expr)
+
 
     def _visit_comp_expr(self, e, ctx) -> fpc.Expr:
         if len(e.vars) == 1:
@@ -233,7 +296,7 @@ class FPCoreCompileInstance(ReduceVisitor):
             elt = self._visit(e.elt, ctx)
 
             let_bindings = [(tuple_id, iterable)]
-            tensor_dims: list[tuple[str, fpc.Expr]] = [(iter_id, fpc.Size(tuple_id))]
+            tensor_dims: list[tuple[str, fpc.Expr]] = [(iter_id, _size0_expr(tuple_id))]
             ref_bindings: list[tuple[str, fpc.Expr]] = [(var, fpc.Ref(fpc.Var(tuple_id), fpc.Var(iter_id)))]
             return fpc.Let(let_bindings, fpc.Tensor(tensor_dims, fpc.Let(ref_bindings, elt)))
         else:
@@ -257,7 +320,7 @@ class FPCoreCompileInstance(ReduceVisitor):
             # bind the sizes to temporaries
             size_ids = [self.gensym.fresh('n') for _ in e.vars]
             size_binds: list[tuple[str, fpc.Expr]] = [
-                (sid, fpc.Size(tid))
+                (sid, _size0_expr(tid))
                 for sid, tid in zip(size_ids, tuple_ids)
             ]
             # bind the indices to temporaries
@@ -335,7 +398,7 @@ class FPCoreCompileInstance(ReduceVisitor):
         iterable = self._visit(stmt.iterable, None)
         body = self._visit(stmt.body, fpc.Var(update))
         # index variables and state merging
-        dim_binding = (stmt.var, fpc.Size(tuple_id))
+        dim_binding = (stmt.var, _size0_expr(tuple_id))
         while_binding = (name, fpc.Var(init), body)
         return fpc.Let([(tuple_id, iterable)], fpc.For([dim_binding], [while_binding], ctx))
 

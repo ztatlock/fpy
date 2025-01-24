@@ -5,11 +5,9 @@ Transformation pass to rewrite in-place tuple mutation as functional updates.
 from typing import Optional
 
 from .define_use import DefineUse
+from .ssa import SSA
 from .verify import VerifyIR
 from ..ir import *
-from ..utils import Gensym
-
-_Ctx = dict[str, str]
 
 class _FuncUpdateInstance(DefaultTransformVisitor):
     """Single-use instance of the FuncUpdate pass."""
@@ -42,5 +40,6 @@ class FuncUpdate:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())
         ir = _FuncUpdateInstance(func).apply()
+        ir = SSA.apply(ir, names)
         VerifyIR.check(ir)
         return ir
