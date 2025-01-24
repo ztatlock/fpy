@@ -89,7 +89,6 @@ class _SSAInstance(DefaultTransformVisitor):
         for name in phi_names:
             ctx[name] = phi_names[name]
 
-        print(phis, lctx, rctx, new_phis, ctx)
         return new_phis, ctx
 
     def _visit_loop_phis(self, phis, lctx: _Ctx, rctx: Optional[_Ctx]):
@@ -128,7 +127,6 @@ class _SSAInstance(DefaultTransformVisitor):
             # merge contexts
             ctx = { **lctx, **rctx }
 
-        print(phis, lctx, rctx, new_phis, ctx)
         return new_phis, ctx
 
     # override to get typing hint
@@ -151,8 +149,6 @@ class SSA:
         if names is None:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())
-        print(func)
         func = _SSAInstance(func, names).apply()
-        print(func)
         VerifyIR.check(func)
         return func

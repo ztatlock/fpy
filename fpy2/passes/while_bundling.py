@@ -13,9 +13,7 @@ from ..utils import Gensym
 
 _CtxType = dict[str, Expr]
 """
-Visitor method context type.
-For statements, this context maps variables to a fresh variable.
-For expressions, this context maps variables to an expression.
+Visitor method context type for expressions
 """
 
 class _WhileBundlingInstance(DefaultTransformVisitor):
@@ -43,7 +41,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
     #  while <cond>:
     #      <stmts> ...
     #
-    #  =>
+    #  ==>
     #
     #  t_0 = (a_0, ..., z_0)
     #  t_1 = phi(t_0, t_2)
@@ -62,8 +60,8 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
             return Block([stmt])
         else:
             # create a new phi variable
-            phi_init = self.gensym.fresh('t')
             phi_name = self.gensym.fresh('t')
+            phi_init = self.gensym.fresh('t')
             phi_update = self.gensym.fresh('t')
             phi_ty = AnyType() # TODO: infer type
 
@@ -121,7 +119,7 @@ class WhileBundling:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())
         inst = _WhileBundlingInstance(func, names)
-        ir = inst.apply()
-        ir = SSA.apply(ir, inst.gensym.names)
-        VerifyIR.check(ir)
-        return ir
+        func = inst.apply()
+        func = SSA.apply(func, inst.gensym.names)
+        VerifyIR.check(func)
+        return func
