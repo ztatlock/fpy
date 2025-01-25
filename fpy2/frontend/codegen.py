@@ -283,13 +283,18 @@ class _IRCodegenInstance(AstVisitor):
             return ir.IfStmt(cond, ift, iff, [])
 
     def _visit_while_stmt(self, stmt, ctx: None):
-        raise NotImplementedError
+        cond = self._visit(stmt.cond, ctx)
+        body = self._visit(stmt.body, ctx)
+        return ir.WhileStmt(cond, body, [])
 
     def _visit_for_stmt(self, stmt, ctx: None):
-        raise NotImplementedError
+        iterable = self._visit(stmt.iterable, ctx)
+        body = self._visit(stmt.body, ctx)
+        return ir.ForStmt(stmt.var, ir.AnyType(), iterable, body, [])
 
     def _visit_context(self, stmt, ctx: None):
-        raise NotImplementedError
+        block = self._visit(stmt.body, ctx)
+        return ir.ContextStmt(stmt.name, stmt.props, block)
 
     def _visit_return(self, stmt, ctx: None):
         return ir.Return(self._visit(stmt.expr, ctx))

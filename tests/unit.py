@@ -195,23 +195,31 @@ def test_list_set3():
     x[0][0][0] = 0.0
     return x
 
-@fpy(name='Test if statement (1/4)')
+@fpy(name='Test if statement (1/6)')
 def test_if1():
     t = 0
     if 0 < 1:
         t = 1
     return t
 
-@fpy(name='Test if statement (2/4)')
+@fpy(name='Test if statement (2/6)')
 def test_if2():
+    t = 0
+    a = 1
+    if 0 < 1:
+        t = 1
+    return t + a
+
+@fpy(name='Test if statement (3/6)')
+def test_if3():
     if 0 < 1:
         t = 1
     else:
         t = 0
     return t
 
-@fpy(name='Test if statement (3/4)')
-def test_if3():
+@fpy(name='Test if statement (4/6)')
+def test_if4():
     if 0 < 1:
         if 1 < 2:
             t = 0
@@ -224,8 +232,8 @@ def test_if3():
             t = 3
     return t
 
-@fpy(name='Test if statement (4/4)')
-def test_if4():
+@fpy(name='Test if statement (5/6)')
+def test_if5():
     if 0 < 1:
         t = 0
     elif 1 < 2:
@@ -233,6 +241,16 @@ def test_if4():
     else:
         t = 2
     return t
+
+@fpy(name='Test if statement (6/6)')
+def test_if6():
+    t = 0
+    a = 1
+    if t < 0:
+        t = 1
+    else:
+        a = 0
+    return t + a
 
 @fpy
 def test_while1():
@@ -488,6 +506,8 @@ cores: list = [
     test_if2,
     test_if3,
     test_if4,
+    test_if5,
+    test_if6,
     test_while1,
     test_while2,
     test_while3,

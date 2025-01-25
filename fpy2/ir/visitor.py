@@ -417,7 +417,8 @@ class DefaultTransformVisitor(TransformVisitor):
                 arg2 = self._visit(e.children[2], ctx)
                 return type(e)(arg0, arg1, arg2)
             case _:
-                raise NotImplementedError('unreachable', e)
+                args = [self._visit(c, ctx) for c in e.children]
+                return type(e)(*args)
 
     def _visit_compare(self, e: Compare, ctx: Any):
         ops = [op for op in e.ops]

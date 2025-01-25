@@ -10,8 +10,7 @@ from .fpyast import *
 from .live_vars import LiveVarAnalysis
 from .syntax_check import SyntaxCheck
 
-from ..passes import VerifyIR
-
+from ..passes import SSA, VerifyIR
 from ..utils import Gensym
 
 _unary_table = {
@@ -460,6 +459,7 @@ def fpcore_to_fpy(core: fpc.FPCore):
     DefinitionAnalysis.analyze(ast)
     LiveVarAnalysis.analyze(ast)
     ir = IRCodegen.lower(ast)
+    ir = SSA.apply(ir)
     VerifyIR.check(ir)
 
     return ir
