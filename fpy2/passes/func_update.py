@@ -40,6 +40,6 @@ class FuncUpdate:
             uses = DefineUse.analyze(func)
             names = set(uses.keys())
         ir = _FuncUpdateInstance(func).apply()
-        ir = SSA.apply(ir, names)
+        ir = SSA.apply(ir)
         VerifyIR.check(ir)
         return ir

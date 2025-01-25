@@ -104,6 +104,6 @@ class ForBundling:
             names = set(uses.keys())
         inst = _ForBundlingInstance(func, names)
         func = inst.apply()
-        func = SSA.apply(func, inst.gensym.names)
+        func = SSA.apply(func)
         VerifyIR.check(func)
         return func

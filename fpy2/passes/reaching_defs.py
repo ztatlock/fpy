@@ -71,7 +71,13 @@ class _ReachingDefsInstance(DefaultVisitor):
         return defs_out, kill_out
 
     def _visit_for_stmt(self, stmt, ctx: _StmtCtx) -> _RetType:
-        raise NotImplementedError
+        defs_in, kill_in = ctx
+        defs = defs_in | { stmt.var }
+        _, block_kill = self._visit_block(stmt.body, defs.copy())
+
+        defs_out = defs.copy()
+        kill_out = kill_in | (defs & block_kill)
+        return defs_out, kill_out
 
     def _visit_context(self, stmt, ctx: _StmtCtx) -> _RetType:
         # TODO: handle `stmt.name`

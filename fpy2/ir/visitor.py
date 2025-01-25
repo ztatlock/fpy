@@ -138,7 +138,7 @@ class BaseVisitor(ABC):
     # Phi node
 
     @abstractmethod
-    def _visit_phis(self, phi: list[PhiNode], lctx: Any, rctx: Any):
+    def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
         """
         Visitor method for a `list` of `PhiNode` nodes for non-loop nodes.
 
@@ -148,7 +148,7 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
-    def _visit_loop_phis(self, phi: list[PhiNode], lctx: Any, rctx: Optional[Any]):
+    def _visit_loop_phis(self, phis: list[PhiNode], lctx: Any, rctx: Optional[Any]):
         """
         Visitor method for a `list` of `PhiNode` nodes for loop nodes.
 

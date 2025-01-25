@@ -120,6 +120,6 @@ class WhileBundling:
             names = set(uses.keys())
         inst = _WhileBundlingInstance(func, names)
         func = inst.apply()
-        func = SSA.apply(func, inst.gensym.names)
+        func = SSA.apply(func)
         VerifyIR.check(func)
         return func
