@@ -143,6 +143,12 @@ class Parser:
         """
         Parse the source code into an FPy AST.
         """
+
+        # dedent the source code to support nested functions
+        lines = self.source.splitlines()
+        indent = len(lines[0]) - len(lines[0].lstrip())
+        self.source = '\n'.join([line[indent:] for line in lines])
+
         mod = ast.parse(self.source, self.name)
         assert isinstance(mod, ast.Module), "expected module"
         # just grab the first function

@@ -45,6 +45,8 @@ def fpy(
 
 
 def _apply_decorator(func: Callable[P, R], **kwargs):
+    print(func.__globals__)
+
     # read the original source of the function
     sourcename = inspect.getabsfile(func)
     lines, start_line = inspect.getsourcelines(func)
