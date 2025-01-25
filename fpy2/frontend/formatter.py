@@ -81,9 +81,9 @@ class _FormatterInstance(AstVisitor):
         args = [self._visit(arg, ctx) for arg in e.args]
         match e.op:
             case NaryOpKind.AND:
-                return f' and '.join(args)
+                return ' and '.join(args)
             case NaryOpKind.OR:
-                return f' or '.join(args)
+                return ' or '.join(args)
             case _:
                 return f'{str(e.op)}({", ".join(args)})'
 

@@ -11,42 +11,38 @@ from .visitor import AstVisitor
 from .. import ir
 from ..utils import Gensym
 
-_CtxType = dict[str, str]
-
 class _IRCodegenInstance(AstVisitor):
-    """Instance of lowering an AST to an IR."""
+    """Single-use instance of lowering an AST to an IR."""
     func: FunctionDef
-    gensym: Gensym
 
     def __init__(self, func: FunctionDef):
         self.func = func
-        self.gensym = Gensym()
 
     def lower(self) -> ir.FunctionDef:
-        return self._visit(self.func, {})
+        return self._visit(self.func, None)
 
-    def _visit_var(self, e, ctx: _CtxType):
-        return ir.Var(ctx[e.name])
+    def _visit_var(self, e, ctx: None):
+        return ir.Var(e.name)
 
-    def _visit_decnum(self, e, ctx: _CtxType):
+    def _visit_decnum(self, e, ctx: None):
         return ir.Decnum(e.val)
 
-    def _visit_hexnum(self, e, ctx: _CtxType):
+    def _visit_hexnum(self, e, ctx: None):
         return ir.Hexnum(e.val)
 
-    def _visit_integer(self, e, ctx: _CtxType):
+    def _visit_integer(self, e, ctx: None):
         return ir.Integer(e.val)
 
-    def _visit_rational(self, e, ctx: _CtxType):
+    def _visit_rational(self, e, ctx: None):
         return ir.Rational(e.p, e.q)
 
-    def _visit_digits(self, e, ctx: _CtxType):
+    def _visit_digits(self, e, ctx: None):
         return ir.Digits(e.m, e.e, e.b)
 
-    def _visit_constant(self, e, ctx: _CtxType):
+    def _visit_constant(self, e, ctx: None):
         return ir.Constant(e.val)
 
-    def _visit_unaryop(self, e, ctx: _CtxType):
+    def _visit_unaryop(self, e, ctx: None):
         match e.op:
             case UnaryOpKind.NEG:
                 arg = self._visit(e.arg, ctx)
@@ -171,7 +167,7 @@ class _IRCodegenInstance(AstVisitor):
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 
-    def _visit_binaryop(self, e, ctx: _CtxType):
+    def _visit_binaryop(self, e, ctx: None):
         lhs = self._visit(e.left, ctx)
         rhs = self._visit(e.right, ctx)
         match e.op:
@@ -204,7 +200,7 @@ class _IRCodegenInstance(AstVisitor):
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 
-    def _visit_ternaryop(self, e, ctx: _CtxType):
+    def _visit_ternaryop(self, e, ctx: None):
         arg0 = self._visit(e.arg0, ctx)
         arg1 = self._visit(e.arg1, ctx)
         arg2 = self._visit(e.arg2, ctx)
@@ -214,7 +210,7 @@ class _IRCodegenInstance(AstVisitor):
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 
-    def _visit_naryop(self, e, ctx: _CtxType):
+    def _visit_naryop(self, e, ctx: None):
         args: list[ir.Expr] = [self._visit(arg, ctx) for arg in e.args]
         match e.op:
             case NaryOpKind.AND:
@@ -224,249 +220,321 @@ class _IRCodegenInstance(AstVisitor):
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 
-    def _visit_compare(self, e, ctx: _CtxType):
+    def _visit_compare(self, e, ctx: None):
         args: list[ir.Expr] = [self._visit(arg, ctx) for arg in e.args]
         return ir.Compare(e.ops, args)
 
-    def _visit_call(self, e, ctx: _CtxType):
+    def _visit_call(self, e, ctx: None):
         args: list[ir.Expr]  = [self._visit(arg, ctx) for arg in e.args]
         return ir.UnknownCall(e.op, *args)
 
-    def _visit_tuple_expr(self, e, ctx: _CtxType):
-        return ir.TupleExpr(*[self._visit(arg, ctx) for arg in e.args])
+    def _visit_tuple_expr(self, e, ctx: None):
+        elts = [self._visit(arg, ctx) for arg in e.args]
+        return ir.TupleExpr(*elts)
 
-    def _visit_comp_expr(self, e, ctx: _CtxType):
+    def _visit_comp_expr(self, e, ctx: None):
         iterables = [self._visit(arg, ctx) for arg in e.iterables]
-        # generate fresh variable for the loop variable
-        iter_vars: list[str] = []
-        for var in e.vars:
-            iter_var = self.gensym.fresh(var)
-            ctx = { **ctx, var: iter_var }
-            iter_vars.append(iter_var)
-        # compile the loop body
         elt = self._visit(e.elt, ctx)
-        return ir.CompExpr(iter_vars, iterables, elt)
+        return ir.CompExpr(e.vars, iterables, elt)
 
-    def _visit_ref_expr(self, e, ctx):
+    def _visit_ref_expr(self, e, ctx: None):
         value = self._visit(e.value, ctx)
         slices = [self._visit(s, ctx) for s in e.slices]
         return ir.TupleRef(value, *slices)
 
-    def _visit_if_expr(self, e, ctx: _CtxType):
-        return ir.IfExpr(
-            self._visit(e.cond, ctx),
-            self._visit(e.ift, ctx),
-            self._visit(e.iff, ctx)
-        )
+    def _visit_if_expr(self, e, ctx: None):
+        cond = self._visit(e.cond, ctx)
+        ift = self._visit(e.ift, ctx)
+        iff = self._visit(e.iff, ctx)
+        return ir.IfExpr(cond, ift, iff)
 
-    def _visit_var_assign(self, stmt, ctx: _CtxType):
-        # compile the expression
-        e = self._visit(stmt.expr, ctx)
-        # generate fresh variable for the assignment
-        t = self.gensym.fresh(stmt.var)
-        ctx = { **ctx, stmt.var: t }
-        s = ir.VarAssign(t, ir.AnyType(), e)
-        return s, ctx
-    
-    def _compile_tuple_binding(self, vars: TupleBinding, ctx: _CtxType):
+    def _visit_var_assign(self, stmt, ctx: None):
+        expr = self._visit(stmt.expr, ctx)
+        return ir.VarAssign(stmt.var, ir.AnyType(), expr)
+
+    def _visit_tuple_binding(self, vars: TupleBinding):
         new_vars: list[str | ir.TupleBinding] = []
         for name in vars:
             if isinstance(name, str):
-                new_vars.append(ctx[name])
+                new_vars.append(name)
             elif isinstance(name, TupleBinding):
-                new_vars.append(self._compile_tuple_binding(name, ctx))
+                new_vars.append(self._visit_tuple_binding(name))
             else:
                 raise NotImplementedError('unexpected tuple identifier', name)
         return ir.TupleBinding(new_vars)
 
-    def _visit_tuple_assign(self, stmt, ctx: _CtxType):
-        # compile the expression
-        e = self._visit(stmt.expr, ctx)
-        # generate fresh variables for the tuple assignment
-        for name in stmt.binding.names():
-            t = self.gensym.fresh(name)
-            ctx = { **ctx, name: t }
-        vars = self._compile_tuple_binding(stmt.binding, ctx)
-        tys = ir.TensorType([ir.AnyType() for _ in stmt.binding])
-        s = ir.TupleAssign(vars, tys, e)
-        return s, ctx
+    def _visit_tuple_assign(self, stmt, ctx: None):
+        binding = self._visit_tuple_binding(stmt.binding)
+        expr = self._visit(stmt.expr, ctx)
+        return ir.TupleAssign(binding, ir.AnyType(), expr)
 
-    def _visit_ref_assign(self, stmt, ctx: _CtxType):
+    def _visit_ref_assign(self, stmt, ctx: None):
         slices = [self._visit(s, ctx) for s in stmt.slices]
-        e = self._visit(stmt.expr, ctx)
-        s = ir.RefAssign(stmt.var, slices, e)
-        return s, ctx
+        value = self._visit(stmt.expr, ctx)
+        return ir.RefAssign(stmt.var, slices, value)
 
-    def _visit_if1_stmt(self, stmt: IfStmt, ctx: _CtxType):
-        """Like `_visit_if_stmt`, but for 1-armed if statements."""
+    def _visit_if_stmt(self, stmt, ctx: None):
         cond = self._visit(stmt.cond, ctx)
-        body, body_ctx = self._visit_block(stmt.ift, ctx)
-        _, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
-        # merge live variables and create new context
-        phis: list[ir.PhiNode] = []
-        new_ctx: _CtxType = dict()
-        for name in live_out:
-            old_name = ctx[name]
-            new_name = body_ctx[name]
-            if old_name != new_name:
-                t = self.gensym.fresh(name)
-                phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
-                new_ctx[name] = t
-            else:
-                new_ctx[name] = ctx[name]
-        # create new statement
-        s = ir.If1Stmt(cond, body, phis)
-        return s, new_ctx
-    
-    def _visit_if2_stmt(self, stmt: IfStmt, ctx: _CtxType):
-        """Like `_visit_if_stmt`, but for 2-armed if statements."""
-        assert stmt.iff is not None, 'expected a 2-armed if statement'
-        cond = self._visit(stmt.cond, ctx)
-        ift, ift_ctx = self._visit_block(stmt.ift, ctx)
-        iff, iff_ctx = self._visit_block(stmt.iff, ctx)
-        _, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
-        # merge live variables
-        phis: list[ir.PhiNode] = []
-        new_ctx: _CtxType = dict()
-        for name in live_out:
-            # well-formedness means that the variable is in both contexts
-            ift_name = ift_ctx.get(name, None)
-            iff_name = iff_ctx.get(name, None)
-            assert ift_name is not None, f'variable not in true branch {ift_name}'
-            assert iff_name is not None, f'variable not in false branch {iff_name}'
-            if ift_name != iff_name:
-                # variable updated on at least one branch => create phi node
-                t = self.gensym.fresh(name)
-                phis.append(ir.PhiNode(t, ift_name, iff_name, ir.AnyType()))
-                new_ctx[name] = t
-            else:
-                # variable not mutated => keep the same name
-                new_ctx[name] = ctx[name]
-        # create new statement
-        s = ir.IfStmt(cond, ift, iff, phis)
-        return s, new_ctx
-
-    def _visit_if_stmt(self, stmt, ctx: _CtxType):
+        ift = self._visit(stmt.ift, ctx)
         if stmt.iff is None:
-            return self._visit_if1_stmt(stmt, ctx)
+            return ir.If1Stmt(cond, ift, [])
         else:
-            return self._visit_if2_stmt(stmt, ctx)
+            iff = self._visit(stmt.iff, ctx)
+            return ir.IfStmt(cond, ift, iff, [])
 
-    def _visit_while_stmt(self, stmt, ctx: _CtxType):
-        # merge variables initialized before the block that
-        # are updated in the body of the loop
-        live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
-        _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
-        # generate fresh variables for all changed variables
-        changed_map: dict[str, str] = dict()
-        changed_vars: set[str] = live_in & def_out
-        for name in changed_vars:
-            t = self.gensym.fresh(name)
-            changed_map[name] = t
-        # create the new context for the loop
-        loop_ctx: _CtxType = dict()
-        for name in ctx:
-            if name in changed_map:
-                loop_ctx[name] = changed_map[name]
-            else:
-                loop_ctx[name] = ctx[name]
-        # compile the condition and body using the loop context
-        cond = self._visit(stmt.cond, loop_ctx)
-        body, body_ctx = self._visit_block(stmt.body, loop_ctx)
-        # merge all changed variables using phi nodes
-        phis: list[ir.PhiNode] = []
-        for name, t in changed_map.items():
-            old_name = ctx[name]
-            new_name = body_ctx[name]
-            assert old_name != new_name, 'must be different by definition analysis'
-            phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
-        # create new statement and context
-        s = ir.WhileStmt(cond, body, phis)
-        new_ctx: _CtxType = dict()
-        for name in ctx:
-            if name in changed_map:
-                new_ctx[name] = changed_map[name]
-            else:
-                new_ctx[name] = ctx[name]
-        return s, new_ctx
+    def _visit_while_stmt(self, stmt, ctx: None):
+        raise NotImplementedError
 
-    def _visit_for_stmt(self, stmt, ctx: _CtxType):
-        # compile the iterable expression
-        cond = self._visit(stmt.iterable, ctx)
-        # generate fresh variable for the loop variable
-        iter_var = self.gensym.fresh(stmt.var)
-        ctx = { **ctx, stmt.var: iter_var }
-        # merge variables initialized before the block that
-        # are updated in the body of the loop
-        live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
-        _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
-        # generate fresh variables for all changed variables
-        changed_vars: set[str] = live_in & def_out
-        changed_map: dict[str, str] = dict()
-        for name in changed_vars:
-            t = self.gensym.fresh(name)
-            changed_map[name] = t
-        # create the new context for the loop
-        loop_ctx: _CtxType = dict()
-        for name in ctx:
-            if name in changed_map:
-                loop_ctx[name] = changed_map[name]
-            else:
-                loop_ctx[name] = ctx[name]
-        # compile the loop body using the loop context
-        body, body_ctx = self._visit_block(stmt.body, loop_ctx)
-        # merge all changed variables using phi nodes
-        phis: list[ir.PhiNode] = []
-        for name, t in changed_map.items():
-            old_name = ctx[name]
-            new_name = body_ctx[name]
-            assert old_name != new_name, 'must be different by definition analysis'
-            phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
-        # create new statement and context
-        s = ir.ForStmt(iter_var, ir.AnyType(), cond, body, phis)
-        new_ctx: _CtxType = dict()
-        for name in ctx:
-            if name in changed_map:
-                new_ctx[name] = changed_map[name]
-            else:
-                new_ctx[name] = ctx[name]
-        return s, new_ctx
+    def _visit_for_stmt(self, stmt, ctx: None):
+        raise NotImplementedError
 
-    def _visit_context(self, stmt, ctx: _CtxType):
-        if stmt.name is not None:
-            t = self.gensym.fresh(stmt.name)
-            ctx = { **ctx, stmt.name: t }
-            body, new_ctx = self._visit(stmt.body, ctx)
-            return ir.ContextStmt(t, stmt.props, body), new_ctx
-        else:
-            body, new_ctx = self._visit(stmt.body, ctx)
-            return ir.ContextStmt(None, stmt.props, body), new_ctx
+    def _visit_context(self, stmt, ctx: None):
+        raise NotImplementedError
 
-    def _visit_return(self, stmt, ctx: _CtxType):
-        e = self._visit(stmt.expr, ctx)
-        return ir.Return(e), set()
+    def _visit_return(self, stmt, ctx: None):
+        return ir.Return(self._visit(stmt.expr, ctx))
 
-    def _visit_block(self, block, ctx: _CtxType):
-        stmts: list[ir.Stmt] = []
-        for stmt in block.stmts:
-            new_stmt, ctx = self._visit(stmt, ctx)
-            stmts.append(new_stmt)
-        return ir.Block(stmts), ctx
+    def _visit_block(self, block, ctx: None):
+        return ir.Block([self._visit(stmt, ctx) for stmt in block.stmts])
 
-    def _visit_function(self, func, ctx: _CtxType):
-        ctx = dict(ctx)
+    def _visit_function(self, func, ctx: None):
         args: list[ir.Argument] = []
         for arg in func.args:
-            self.gensym.reserve(arg.name)
-            ctx[arg.name] = arg.name
-            args.append(ir.Argument(arg.name, ir.AnyType()))
-        e, _ = self._visit(func.body, ctx)
+            # TODO: use type annotation
+            ty = ir.AnyType()
+            args.append(ir.Argument(arg.name, ty))
+        e = self._visit(func.body, ctx)
         return ir.FunctionDef(func.name, args, e, ir.AnyType(), func.ctx)
+
+
+
+
+# class _IRCodegenInstance(AstVisitor):
+#     """Instance of lowering an AST to an IR."""
+#     func: FunctionDef
+#     gensym: Gensym
+
+#     def __init__(self, func: FunctionDef):
+#         self.func = func
+#         self.gensym = Gensym()
+
+#     def lower(self) -> ir.FunctionDef:
+#         return self._visit(self.func, {})
+
+
+
+#     def _visit_comp_expr(self, e, ctx: None):
+#         iterables = [self._visit(arg, ctx: None) for arg in e.iterables]
+#         # generate fresh variable for the loop variable
+#         iter_vars: list[str] = []
+#         for var in e.vars:
+#             iter_var = self.gensym.fresh(var)
+#             ctx = { **ctx, var: iter_var }
+#             iter_vars.append(iter_var)
+#         # compile the loop body
+#         elt = self._visit(e.elt, ctx: None)
+#         return ir.CompExpr(iter_vars, iterables, elt)
+
+#     def _visit_ref_expr(self, e, ctx: None):
+#         value = self._visit(e.value, ctx: None)
+#         slices = [self._visit(s, ctx: None) for s in e.slices]
+#         return ir.TupleRef(value, *slices)
+
+#     def _visit_if_expr(self, e, ctx: None):
+#         return ir.IfExpr(
+#             self._visit(e.cond, ctx: None),
+#             self._visit(e.ift, ctx: None),
+#             self._visit(e.iff, ctx: None)
+#         )
+
+#     def _visit_var_assign(self, stmt, ctx: None):
+#         # compile the expression
+#         e = self._visit(stmt.expr, ctx: None)
+#         # generate fresh variable for the assignment
+#         t = self.gensym.fresh(stmt.var)
+#         ctx = { **ctx, stmt.var: t }
+#         s = ir.VarAssign(t, ir.AnyType(), e)
+#         return s, ctx
+    
+#     def _compile_tuple_binding(self, vars: TupleBinding, ctx: None):
+#         new_vars: list[str | ir.TupleBinding] = []
+#         for name in vars:
+#             if isinstance(name, str):
+#                 new_vars.append(ctx[name])
+#             elif isinstance(name, TupleBinding):
+#                 new_vars.append(self._compile_tuple_binding(name, ctx: None))
+#             else:
+#                 raise NotImplementedError('unexpected tuple identifier', name)
+#         return ir.TupleBinding(new_vars)
+
+#     def _visit_tuple_assign(self, stmt, ctx: None):
+#         # compile the expression
+#         e = self._visit(stmt.expr, ctx: None)
+#         # generate fresh variables for the tuple assignment
+#         for name in stmt.binding.names():
+#             t = self.gensym.fresh(name)
+#             ctx = { **ctx, name: t }
+#         vars = self._compile_tuple_binding(stmt.binding, ctx: None)
+#         tys = ir.TensorType([ir.AnyType() for _ in stmt.binding])
+#         s = ir.TupleAssign(vars, tys, e)
+#         return s, ctx
+
+#     def _visit_ref_assign(self, stmt, ctx: None):
+#         slices = [self._visit(s, ctx: None) for s in stmt.slices]
+#         e = self._visit(stmt.expr, ctx: None)
+#         s = ir.RefAssign(stmt.var, slices, e)
+#         return s, ctx
+
+
+    # def _visit_if1_stmt(self, stmt: IfStmt, ctx: None):
+    #     """Like `_visit_if_stmt`, but for 1-armed if statements."""
+    #     cond = self._visit(stmt.cond, ctx: None)
+    #     body, body_ctx = self._visit_block(stmt.ift, ctx: None)
+    #     _, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
+    #     # merge live variables and create new context
+    #     phis: list[ir.PhiNode] = []
+    #     new_ctx: None = dict()
+    #     for name in live_out:
+    #         old_name = ctx[name]
+    #         new_name = body_ctx[name]
+    #         if old_name != new_name:
+    #             t = self.gensym.fresh(name)
+    #             phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
+    #             new_ctx[name] = t
+    #         else:
+    #             new_ctx[name] = ctx[name]
+    #     # create new statement
+    #     s = ir.If1Stmt(cond, body, phis)
+    #     return s, new_ctx
+    
+    # def _visit_if2_stmt(self, stmt: IfStmt, ctx: None):
+    #     """Like `_visit_if_stmt`, but for 2-armed if statements."""
+    #     assert stmt.iff is not None, 'expected a 2-armed if statement'
+    #     cond = self._visit(stmt.cond, ctx: None)
+    #     ift, ift_ctx = self._visit_block(stmt.ift, ctx: None)
+    #     iff, iff_ctx = self._visit_block(stmt.iff, ctx: None)
+    #     _, live_out = stmt.attribs[LiveVarAnalysis.analysis_name]
+    #     # merge live variables
+    #     phis: list[ir.PhiNode] = []
+    #     new_ctx: None = dict()
+    #     for name in live_out:
+    #         # well-formedness means that the variable is in both contexts
+    #         ift_name = ift_ctx.get(name, None)
+    #         iff_name = iff_ctx.get(name, None)
+    #         assert ift_name is not None, f'variable not in true branch {ift_name}'
+    #         assert iff_name is not None, f'variable not in false branch {iff_name}'
+    #         if ift_name != iff_name:
+    #             # variable updated on at least one branch => create phi node
+    #             t = self.gensym.fresh(name)
+    #             phis.append(ir.PhiNode(t, ift_name, iff_name, ir.AnyType()))
+    #             new_ctx[name] = t
+    #         else:
+    #             # variable not mutated => keep the same name
+    #             new_ctx[name] = ctx[name]
+    #     # create new statement
+    #     s = ir.IfStmt(cond, ift, iff, phis)
+    #     return s, new_ctx
+
+    # def _visit_if_stmt(self, stmt, ctx: None):
+    #     if stmt.iff is None:
+    #         return self._visit_if1_stmt(stmt, ctx: None)
+    #     else:
+    #         return self._visit_if2_stmt(stmt, ctx: None)
+
+    # def _visit_while_stmt(self, stmt, ctx: None):
+    #     # merge variables initialized before the block that
+    #     # are updated in the body of the loop
+    #     live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
+    #     _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
+    #     # generate fresh variables for all changed variables
+    #     changed_map: dict[str, str] = dict()
+    #     changed_vars: set[str] = live_in & def_out
+    #     for name in changed_vars:
+    #         t = self.gensym.fresh(name)
+    #         changed_map[name] = t
+    #     # create the new context for the loop
+    #     loop_ctx: None = dict()
+    #     for name in ctx:
+    #         if name in changed_map:
+    #             loop_ctx[name] = changed_map[name]
+    #         else:
+    #             loop_ctx[name] = ctx[name]
+    #     # compile the condition and body using the loop context
+    #     cond = self._visit(stmt.cond, loop_ctx: None)
+    #     body, body_ctx = self._visit_block(stmt.body, loop_ctx: None)
+    #     # merge all changed variables using phi nodes
+    #     phis: list[ir.PhiNode] = []
+    #     for name, t in changed_map.items():
+    #         old_name = ctx[name]
+    #         new_name = body_ctx[name]
+    #         assert old_name != new_name, 'must be different by definition analysis'
+    #         phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
+    #     # create new statement and context
+    #     s = ir.WhileStmt(cond, body, phis)
+    #     new_ctx: None = dict()
+    #     for name in ctx:
+    #         if name in changed_map:
+    #             new_ctx[name] = changed_map[name]
+    #         else:
+    #             new_ctx[name] = ctx[name]
+    #     return s, new_ctx
+
+    # def _visit_for_stmt(self, stmt, ctx: None):
+    #     # compile the iterable expression
+    #     cond = self._visit(stmt.iterable, ctx: None)
+    #     # generate fresh variable for the loop variable
+    #     iter_var = self.gensym.fresh(stmt.var)
+    #     ctx = { **ctx, stmt.var: iter_var }
+    #     # merge variables initialized before the block that
+    #     # are updated in the body of the loop
+    #     live_in, _ = stmt.attribs[LiveVarAnalysis.analysis_name]
+    #     _, def_out = stmt.body.attribs[DefinitionAnalysis.analysis_name]
+    #     # generate fresh variables for all changed variables
+    #     changed_vars: set[str] = live_in & def_out
+    #     changed_map: dict[str, str] = dict()
+    #     for name in changed_vars:
+    #         t = self.gensym.fresh(name)
+    #         changed_map[name] = t
+    #     # create the new context for the loop
+    #     loop_ctx: None = dict()
+    #     for name in ctx:
+    #         if name in changed_map:
+    #             loop_ctx[name] = changed_map[name]
+    #         else:
+    #             loop_ctx[name] = ctx[name]
+    #     # compile the loop body using the loop context
+    #     body, body_ctx = self._visit_block(stmt.body, loop_ctx: None)
+    #     # merge all changed variables using phi nodes
+    #     phis: list[ir.PhiNode] = []
+    #     for name, t in changed_map.items():
+    #         old_name = ctx[name]
+    #         new_name = body_ctx[name]
+    #         assert old_name != new_name, 'must be different by definition analysis'
+    #         phis.append(ir.PhiNode(t, old_name, new_name, ir.AnyType()))
+    #     # create new statement and context
+    #     s = ir.ForStmt(iter_var, ir.AnyType(), cond, body, phis)
+    #     new_ctx: None = dict()
+    #     for name in ctx:
+    #         if name in changed_map:
+    #             new_ctx[name] = changed_map[name]
+    #         else:
+    #             new_ctx[name] = ctx[name]
+    #     return s, new_ctx
+
+    # def _visit_context(self, stmt, ctx: None):
+    #     if stmt.name is not None:
+    #         t = self.gensym.fresh(stmt.name)
+    #         ctx = { **ctx, stmt.name: t }
+    #         body, new_ctx = self._visit(stmt.body, ctx: None)
+    #         return ir.ContextStmt(t, stmt.props, body), new_ctx
+    #     else:
+    #         body, new_ctx = self._visit(stmt.body, ctx: None)
+    #         return ir.ContextStmt(None, stmt.props, body), new_ctx
 
 
 class IRCodegen:
     """Lowers a FPy AST to FPy IR."""
-    
+
     @staticmethod
     def lower(f: FunctionDef) -> ir.FunctionDef:
         return _IRCodegenInstance(f).lower()

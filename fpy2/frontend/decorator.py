@@ -14,7 +14,7 @@ from .live_vars import LiveVarAnalysis
 from .parser import Parser
 from .syntax_check import SyntaxCheck
 
-from ..passes import VerifyIR
+from ..passes import SSA, VerifyIR
 from ..runtime import Function
 
 P = ParamSpec('P')
@@ -64,6 +64,7 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     DefinitionAnalysis.analyze(ast)
     LiveVarAnalysis.analyze(ast)
     ir = IRCodegen.lower(ast)
+    ir = SSA.apply(ir)
     VerifyIR.check(ir)
 
     # wrap the IR in a Function
