@@ -204,6 +204,13 @@ class _FPCore2FPy:
                 ops = [CompareOp.NE for _ in e.children[1:]]
                 exprs = [self._visit(e, ctx) for e in e.children]
                 return Compare(ops, exprs, None)
+            case fpc.Size():
+                # BUG: titanfp package says `fpc.Size` is n-ary
+                if len(e.children) != 2:
+                    raise ValueError('size operator expects 2 arguments')
+                arg0 = self._visit(e.children[0], ctx)
+                arg1 = self._visit(e.children[1], ctx)
+                return BinaryOp(BinaryOpKind.SIZE, arg0, arg1, None)
             case fpc.UnknownOperator():
                 exprs = [self._visit(e, ctx) for e in e.children]
                 return Call(e.name, exprs, None)
@@ -333,7 +340,55 @@ class _FPCore2FPy:
         body_ctx = _Ctx(env=env, stmts=ctx.stmts)
         return self._visit(e.body, body_ctx)
 
+    def _make_tensor_body(
+        self,
+        e: fpc.TensorStar,
+        iter_vars: dict[str, str],
+        ctx: _Ctx
+    ) -> None:
+        def make_body(ctx: _Ctx):
+            for var, _, update in e.while_bindings:
+                # compile value
+                update_e = self._visit(update, ctx)
+                # bind value to temporary
+                t = ctx.env[var]
+                stmt = VarAssign(t, update_e, None, None)
+                ctx.stmts.append(stmt)
+
+        def rec(dim_bindings: list[tuple[str, fpc.Expr]], ctx: _Ctx):
+            # generate fresh identifier for iteration variable
+            var, _ = dim_bindings[0]
+            tuple_id = iter_vars[var]
+            iter_id = self.gensym.fresh(var)
+            env = { **ctx.env, var: iter_id }
+
+            stmts: list[Stmt] = []
+            loop_ctx = _Ctx(env=env, stmts=stmts)
+            if len(dim_bindings) > 1:
+                rec(dim_bindings[1:], loop_ctx)
+            else:
+                make_body(loop_ctx)
+
+            stmt = ForStmt(iter_id, Var(tuple_id, None), Block(stmts), None)
+            ctx.stmts.append(stmt)
+
+        rec(e.dim_bindings, ctx)
+
     def _visit_tensorstar(self, e: fpc.TensorStar, ctx: _Ctx) -> Expr:
+        # (tensor ([<i0> <e0>] ...) ([<x0> <init0> <update0>] ...) <body>)
+        #
+        # <n0> = <e0>
+        # ...
+        # <x0> = <init0>
+        # ...
+        # for <i0> in range(<n0>):
+        #    ...
+        #      <x0> = <update0>
+        #      ...
+        # <body>
+        # ...
+        #
+
         # bind iteration bounds to temporaries
         env = ctx.env
         iter_vars: dict[str, str] = {}
@@ -355,9 +410,23 @@ class _FPCore2FPy:
             ctx.stmts.append(stmt)
             env = { **env, var: t }
 
+        # generate loop body
+        loop_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        self._make_tensor_body(e, iter_vars, loop_ctx)
+
+        # compile body
+        body_ctx = _Ctx(env=env, stmts=ctx.stmts)
+        return self._visit(e.body, body_ctx)
+
         raise NotImplementedError(e)
 
     def _visit_tensor(self, e: fpc.Tensor, ctx: _Ctx) -> Expr:
+        raise NotImplementedError(e)
+
+    def _visit_forstar(self, e: fpc.ForStar, ctx: _Ctx) -> Expr:
+        raise NotImplementedError(e)
+    
+    def _visit_for(self, e: fpc.For, ctx: _Ctx) -> Expr:
         raise NotImplementedError(e)
 
     def _visit_ctx(self, e: fpc.Ctx, ctx: _Ctx) -> Expr:
@@ -412,6 +481,10 @@ class _FPCore2FPy:
                 return self._visit_tensorstar(e, ctx)
             case fpc.Tensor():
                 return self._visit_tensor(e, ctx)
+            case fpc.ForStar():
+                return self._visit_forstar(e, ctx)
+            case fpc.For():
+                return self._visit_for(e, ctx)
             case fpc.Ctx():
                 return self._visit_ctx(e, ctx)
             case _:

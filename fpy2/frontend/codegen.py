@@ -197,6 +197,8 @@ class _IRCodegenInstance(AstVisitor):
                 return ir.Atan2(lhs, rhs)
             case BinaryOpKind.POW:
                 return ir.Pow(lhs, rhs)
+            case BinaryOpKind.SIZE:
+                return ir.Size(lhs, rhs)
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 

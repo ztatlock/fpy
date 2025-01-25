@@ -392,6 +392,14 @@ class Range(UnaryExpr):
     """FPy node: range constructor"""
     name: str = 'range'
 
+class Dim(UnaryExpr):
+    """FPy node: dimension operator"""
+    name: str = 'dim'
+
+class Size(BinaryExpr):
+    """FPy node: size operator"""
+    name: str = 'size'
+
 # Comparisons
 
 class Compare(Expr):

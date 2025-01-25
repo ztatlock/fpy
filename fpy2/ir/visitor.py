@@ -400,7 +400,8 @@ class DefaultTransformVisitor(TransformVisitor):
         return Constant(e.val)
 
     def _visit_unknown(self, e: UnknownCall, ctx: Any):
-        return UnknownCall(*[self._visit(c, ctx) for c in e.children])
+        args = [self._visit(c, ctx) for c in e.children]
+        return UnknownCall(e.name, *args)
 
     def _visit_nary_expr(self, e: NaryExpr, ctx: Any):
         match e:

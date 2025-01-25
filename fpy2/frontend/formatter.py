@@ -84,8 +84,9 @@ class _FormatterInstance(AstVisitor):
                 return ' and '.join(args)
             case NaryOpKind.OR:
                 return ' or '.join(args)
-            case _:
-                return f'{str(e.op)}({", ".join(args)})'
+            case NaryOpKind.SIZE:
+                arg_strs = ', '.join(args)
+                return f'size({arg_strs})'
 
     def _visit_compare(self, e, ctx: _Ctx):
         first = self._visit(e.args[0], ctx)
@@ -94,7 +95,8 @@ class _FormatterInstance(AstVisitor):
         return f'{first} {s}'
 
     def _visit_call(self, e, ctx: _Ctx):
-        raise NotImplementedError(e)
+        args = [self._visit(arg, ctx) for arg in e.args]
+        return f'{e.op}({', '.join(args)})'
 
     def _visit_tuple_expr(self, e, ctx: _Ctx):
         elts = [self._visit(elt, ctx) for elt in e.args]
@@ -175,6 +177,19 @@ class _FormatterInstance(AstVisitor):
         for stmt in block.stmts:
             self._visit(stmt, ctx)
 
+    def _format_decorator(self, props: dict[str, str], ctx: _Ctx):
+        if len(props) == 0:
+            self._add_line('@fpy', ctx)
+        elif len(props) == 1:
+            k, *_ = tuple(props.keys())
+            v = props[k]
+            self._add_line(f'@fpy({k}={v})', ctx)
+        else:
+            self._add_line('@fpy(', ctx)
+            for k, v in props.items():
+                self._add_line(f'{k}={v},', ctx + 1)
+            self._add_line(')', ctx)
+
     def _visit_function(self, func, ctx: _Ctx):
         # TODO: type annotation
         if func.name is None:
@@ -187,6 +202,7 @@ class _FormatterInstance(AstVisitor):
             arg_strs.append(arg.name)
 
         arg_str = ', '.join(arg_strs)
+        self._format_decorator(func.ctx, ctx)
         self._add_line(f'def {name}({arg_str}):', ctx)
         self._visit(func.body, ctx + 1)
 

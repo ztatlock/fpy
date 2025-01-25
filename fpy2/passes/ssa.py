@@ -297,8 +297,6 @@ class SSA:
     @staticmethod
     def apply(func: FunctionDef) -> FunctionDef:
         reaches = ReachingDefs.analyze(func)
-        print(func)
         func = _SSAInstance(func, reaches).apply()
-        print(func)
         VerifyIR.check(func)
         return func

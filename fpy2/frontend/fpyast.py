@@ -34,6 +34,84 @@ class Location:
             return False
         return self.__key() == other.__key()
 
+class UnaryOpKind(Enum):
+    # unary operators
+    NEG = 0
+    NOT = 1
+    # unary functions
+    FABS = 2
+    SQRT = 3
+    CBRT = 4
+    CEIL = 5
+    FLOOR = 6
+    NEARBYINT = 7
+    ROUND = 8
+    TRUNC = 9
+    ACOS = 10
+    ASIN = 11
+    ATAN = 12
+    COS = 13
+    SIN = 14
+    TAN = 15
+    ACOSH = 16
+    ASINH = 17
+    ATANH = 18
+    COSH = 19
+    SINH = 20
+    TANH = 21
+    EXP = 22
+    EXP2 = 23
+    EXPM1 = 24
+    LOG = 25
+    LOG10 = 26
+    LOG1P = 27
+    LOG2 = 28
+    ERF = 29
+    ERFC = 30
+    LGAMMA = 31
+    TGAMMA = 32
+    ISFINITE = 33
+    ISINF = 34
+    ISNAN = 35
+    ISNORMAL = 36
+    SIGNBIT = 37
+    CAST = 38
+    # unary generator
+    RANGE = 39
+
+    def __str__(self):
+        return self.name.lower()
+
+class BinaryOpKind(Enum):
+    # binary operators
+    ADD = 0
+    SUB = 1
+    MUL = 2
+    DIV = 3
+    # binary functions
+    COPYSIGN = 4
+    FDIM = 5
+    FMAX = 6
+    FMIN = 7
+    FMOD = 8
+    REMAINDER = 9
+    HYPOT = 10
+    ATAN2 = 11
+    POW = 12
+    # tensor operations
+    SIZE = 13
+
+    def __str__(self):
+        return self.name.lower()
+
+class TernaryOpKind(Enum):
+    # ternary operators
+    FMA = 0
+
+class NaryOpKind(Enum):
+    # boolean operations
+    AND = 1
+    OR = 2
 
 class Ast(ABC):
     """FPy AST: abstract base class for all AST nodes."""
@@ -168,56 +246,6 @@ class Constant(ValueExpr):
         super().__init__(loc)
         self.val = val
 
-
-class UnaryOpKind(Enum):
-    # unary operators
-    NEG = 0
-    NOT = 1
-    # unary functions
-    FABS = 2
-    SQRT = 3
-    CBRT = 4
-    CEIL = 5
-    FLOOR = 6
-    NEARBYINT = 7
-    ROUND = 8
-    TRUNC = 9
-    ACOS = 10
-    ASIN = 11
-    ATAN = 12
-    COS = 13
-    SIN = 14
-    TAN = 15
-    ACOSH = 16
-    ASINH = 17
-    ATANH = 18
-    COSH = 19
-    SINH = 20
-    TANH = 21
-    EXP = 22
-    EXP2 = 23
-    EXPM1 = 24
-    LOG = 25
-    LOG10 = 26
-    LOG1P = 27
-    LOG2 = 28
-    ERF = 29
-    ERFC = 30
-    LGAMMA = 31
-    TGAMMA = 32
-    ISFINITE = 33
-    ISINF = 34
-    ISNAN = 35
-    ISNORMAL = 36
-    SIGNBIT = 37
-    CAST = 38
-    # unary generator
-    RANGE = 39
-
-    def __str__(self):
-        return self.name.lower()
-
-
 class UnaryOp(Expr):
     """FPy AST: unary operation"""
     op: UnaryOpKind
@@ -232,27 +260,6 @@ class UnaryOp(Expr):
         super().__init__(loc)
         self.op = op
         self.arg = arg
-
-class BinaryOpKind(Enum):
-    # binary operators
-    ADD = 0
-    SUB = 1
-    MUL = 2
-    DIV = 3
-    # binary functions
-    COPYSIGN = 4
-    FDIM = 5
-    FMAX = 6
-    FMIN = 7
-    FMOD = 8
-    REMAINDER = 9
-    HYPOT = 10
-    ATAN2 = 11
-    POW = 12
-
-    def __str__(self):
-        return self.name.lower()
-
 
 class BinaryOp(Expr):
     """FPy AST: binary operation"""
@@ -271,10 +278,6 @@ class BinaryOp(Expr):
         self.op = op
         self.left = left
         self.right = right
-
-class TernaryOpKind(Enum):
-    # ternary operators
-    FMA = 0
 
 class TernaryOp(Expr):
     """FPy AST: ternary operation"""
@@ -296,10 +299,6 @@ class TernaryOp(Expr):
         self.arg0 = arg0
         self.arg1 = arg1
         self.arg2 = arg2
-
-class NaryOpKind(Enum):
-    OR = 2
-    AND = 1
 
 class NaryOp(Expr):
     """FPy AST: n-ary operation"""
