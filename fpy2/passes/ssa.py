@@ -33,7 +33,7 @@ class _SSAInstance(DefaultTransformVisitor):
         return super()._visit(e, ctx)
 
     def _visit_var(self, e, ctx: _Ctx):
-        return Var(ctx.get(e.name, e.name))
+        return Var(ctx[e.name])
 
     def _visit_comp_expr(self, e, ctx: _Ctx):
         iterables = [self._visit(iterable, ctx) for iterable in e.iterables]
@@ -78,7 +78,7 @@ class _SSAInstance(DefaultTransformVisitor):
         return TupleAssign(binding, e.ty, expr), ctx
 
     def _visit_ref_assign(self, stmt, ctx: _Ctx):
-        var = ctx.get(stmt.var, stmt.var)
+        var = ctx[stmt.var]
         slices = [self._visit(slice, ctx) for slice in stmt.slices]
         expr = self._visit(stmt.expr, ctx)
         return RefAssign(var, slices, expr), ctx
@@ -88,9 +88,21 @@ class _SSAInstance(DefaultTransformVisitor):
         cond = self._visit(stmt.cond, ctx)
         body, body_ctx = self._visit_block(stmt.body, ctx)
 
-        # create phi nodes for any updated variable
+        # update existing phi nodes
         new_phis: list[PhiNode] = []
-        new_ctx: _Ctx = {}
+        new_ctx = ctx.copy()
+        for phi in stmt.phis:
+            del new_ctx[phi.lhs]
+            if phi.lhs in ctx:
+                # TODO: infer type
+                t = self.gensym.fresh(phi.name)
+                lhs = ctx[phi.lhs]
+                rhs = body_ctx[phi.rhs]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[phi.name] = t
+
+        # create new phi variables
         for var in ctx:
             lhs = ctx[var]
             rhs = body_ctx[var]
@@ -100,10 +112,8 @@ class _SSAInstance(DefaultTransformVisitor):
                 phi = PhiNode(t, lhs, rhs, AnyType())
                 new_phis.append(phi)
                 new_ctx[var] = t
-            else:
-                new_ctx[var] = lhs
 
-        s = If1Stmt(cond, body, stmt.phis + new_phis)
+        s = If1Stmt(cond, body, new_phis)
         return s, new_ctx
 
     def _visit_if_stmt(self, stmt, ctx: _Ctx):
@@ -111,23 +121,33 @@ class _SSAInstance(DefaultTransformVisitor):
         cond = self._visit(stmt.cond, ctx)
         ift, ift_ctx = self._visit_block(stmt.ift, ctx)
         iff, iff_ctx = self._visit_block(stmt.iff, ctx)
+        merged_vars = ift_ctx.keys() & iff_ctx.keys()
 
-        # compute phi variables for any variables requiring merging
-        phis: list[PhiNode] = []
-        new_ctx: _Ctx = {}
-        for var in ift_ctx.keys() & iff_ctx.keys():
+        # update existing phi nodes
+        new_phis: list[PhiNode] = []
+        new_ctx = ctx.copy()
+        for phi in stmt.phis:
+            if phi.lhs in ift_ctx and phi.rhs in iff_ctx:
+                # TODO: infer type
+                t = self.gensym.fresh(phi.name)
+                lhs = ift_ctx[phi.lhs]
+                rhs = iff_ctx[phi.rhs]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[phi.name] = t
+
+        # create new phi variables
+        for var in merged_vars:
             lhs = ift_ctx[var]
             rhs = iff_ctx[var]
             if lhs != rhs:
                 # TODO: infer type
                 t = self.gensym.fresh(var)
                 phi = PhiNode(t, lhs, rhs, AnyType())
-                phis.append(phi)
+                new_phis.append(phi)
                 new_ctx[var] = t
-            else:
-                new_ctx[var] = lhs
 
-        s = IfStmt(cond, ift, iff, phis)
+        s = IfStmt(cond, ift, iff, new_phis)
         return s, new_ctx
 
     def _visit_while_stmt(self, stmt, ctx: _Ctx):
@@ -135,8 +155,14 @@ class _SSAInstance(DefaultTransformVisitor):
         reach = self.reaches[stmt.body]
         updated = ctx.keys() & reach.kill_out
 
-        # create loop context
+        # create loop context with existing phi names
         loop_ctx = ctx.copy()
+        for phi in stmt.phis:
+            t = self.gensym.fresh(phi.name)
+            loop_ctx[phi.name] = t
+            del loop_ctx[phi.lhs]
+
+        # add new phi names to loop context
         for var in updated:
             t = self.gensym.fresh(var)
             loop_ctx[var] = t
@@ -145,19 +171,34 @@ class _SSAInstance(DefaultTransformVisitor):
         cond = self._visit(stmt.cond, loop_ctx)
         body, body_ctx = self._visit_block(stmt.body, loop_ctx)
 
-        # create phi nodes for any updated variable
-        phis: list[PhiNode] = []
+        # update existing phi nodes
+        new_phis: list[PhiNode] = []
         new_ctx = ctx.copy()
+        for phi in stmt.phis:
+            del new_ctx[phi.lhs]
+            if phi.lhs in ctx:
+                # TODO: infer type
+                t = loop_ctx[phi.name]
+                lhs = ctx[phi.lhs]
+                rhs = body_ctx[phi.rhs]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[phi.name] = t
+
+        # create new phi variables
         for var in updated:
-            # TODO: infer type
-            t = loop_ctx[var]
             lhs = ctx[var]
             rhs = body_ctx[var]
-            phi = PhiNode(t, lhs, rhs, AnyType())
-            phis.append(phi)
-            new_ctx[var] = t
+            if lhs != rhs:
+                # TODO: infer type
+                t = loop_ctx[var]
+                lhs = ctx[var]
+                rhs = body_ctx[var]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[var] = t
 
-        s = WhileStmt(cond, body, phis)
+        s = WhileStmt(cond, body, new_phis)
         return s, new_ctx
 
     def _visit_for_stmt(self, stmt, ctx: _Ctx):
@@ -170,8 +211,14 @@ class _SSAInstance(DefaultTransformVisitor):
         reach = self.reaches[stmt.body]
         updated = ctx.keys() & reach.kill_out
 
-        # create loop context
+        # create loop context with existing phi names
         loop_ctx = ctx.copy()
+        for phi in stmt.phis:
+            t = self.gensym.fresh(phi.name)
+            loop_ctx[phi.name] = t
+            del loop_ctx[phi.lhs]
+
+        # add new phi names to loop context
         for var in updated:
             t = self.gensym.fresh(var)
             loop_ctx[var] = t
@@ -179,40 +226,49 @@ class _SSAInstance(DefaultTransformVisitor):
         # visit body
         body, body_ctx = self._visit_block(stmt.body, loop_ctx)
 
-        # create phi nodes for any updated variable
-        phis: list[PhiNode] = []
+        # update existing phi nodes
+        new_phis: list[PhiNode] = []
         new_ctx = ctx.copy()
+        for phi in stmt.phis:
+            del new_ctx[phi.lhs]
+            if phi.lhs in ctx:
+                # TODO: infer type
+                t = loop_ctx[phi.name]
+                lhs = ctx[phi.lhs]
+                rhs = body_ctx[phi.rhs]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[phi.name] = t
+
+        # create new phi variables
         for var in updated:
-            # TODO: infer type
-            t = loop_ctx[var]
             lhs = ctx[var]
             rhs = body_ctx[var]
-            phi = PhiNode(t, lhs, rhs, AnyType())
-            phis.append(phi)
-            new_ctx[var] = t
+            if lhs != rhs:
+                # TODO: infer type
+                t = loop_ctx[var]
+                lhs = ctx[var]
+                rhs = body_ctx[var]
+                phi = PhiNode(t, lhs, rhs, AnyType())
+                new_phis.append(phi)
+                new_ctx[var] = t
 
-        s = ForStmt(iter_name, stmt.ty, iterable, body, phis)
+        s = ForStmt(iter_name, stmt.ty, iterable, body, new_phis)
         return s, new_ctx
 
     def _visit_context(self, stmt, ctx: _Ctx):
         # TODO: what to do about `stmt.name`
-        body, _ = self._visit_block(stmt.body, ctx)
-        return ContextStmt(stmt.name, stmt.props, body), ctx
+        body, body_ctx = self._visit_block(stmt.body, ctx)
+        return ContextStmt(stmt.name, stmt.props, body), body_ctx
 
     def _visit_return(self, stmt, ctx):
         s = Return(self._visit(stmt.expr, ctx))
         return s, ctx
 
     def _visit_phis(self, phis: list[PhiNode], lctx: _Ctx, rctx: _Ctx):
-        new_phis: list[PhiNode] = []
-        for phi in phis:
-            t = self.gensym.fresh(phi.name)
-            lhs = lctx[phi.lhs]
-            rhs = rctx[phi.rhs]
-            new_phis.append(PhiNode(t, lhs, rhs, phi.ty))
-        return new_phis
+        raise NotImplementedError
 
-    def _visit_loop_phis(self, phis, lctx, rctx):
+    def _visit_loop_phis(self, phis: list[PhiNode], lctx: _Ctx, rctx: Optional[_Ctx]):
         raise NotImplementedError
 
     def _visit_function(self, func, ctx: _Ctx):
@@ -241,6 +297,8 @@ class SSA:
     @staticmethod
     def apply(func: FunctionDef) -> FunctionDef:
         reaches = ReachingDefs.analyze(func)
+        print(func)
         func = _SSAInstance(func, reaches).apply()
+        print(func)
         VerifyIR.check(func)
         return func

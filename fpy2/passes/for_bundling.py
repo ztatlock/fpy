@@ -81,8 +81,8 @@ class _ForBundlingInstance(DefaultTransformVisitor):
         stmts: list[Stmt] = []
         for stmt in block.stmts:
             if isinstance(stmt, ForStmt):
-                stmt = self._visit_for_stmt(stmt, None)
-                stmts.append(stmt)
+                b = self._visit_for_stmt(stmt, None)
+                stmts.extend(b.stmts)
             else:
                 stmt, _ = self._visit(stmt, None)
                 stmts.append(stmt)

@@ -163,7 +163,9 @@ class _VerifyPassInstance(DefaultVisitor):
 
     def _visit_block(self, block, ctx: _CtxType):
         for stmt in block.stmts:
-            if isinstance(stmt, Return):
+            if not isinstance(stmt, Stmt):
+                raise InvalidIRError(f'expected a statement {stmt}')
+            elif isinstance(stmt, Return):
                 self._visit_return(stmt, ctx)
                 ctx = set()
             else:
