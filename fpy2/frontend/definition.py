@@ -16,7 +16,7 @@ class DefinitionAnalysisInstance(AstVisitor):
 
     def analyze(self):
         """Analyze the function."""
-        self._visit(self.func, set())
+        self._visit_function(self.func, set())
 
     def _visit_var(self, e, ctx):
         raise NotImplementedError('should not be called')

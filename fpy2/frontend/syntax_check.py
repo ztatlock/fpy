@@ -50,7 +50,7 @@ class SyntaxCheckInstance(AstVisitor):
         self.rets = set()
 
     def analyze(self):
-        self._visit(self.func, (_Env(), False))
+        self._visit_function(self.func, (_Env(), False))
         if len(self.rets) == 0:
             raise FPySyntaxError('function has no return statement')
         elif len(self.rets) > 1:

@@ -179,7 +179,7 @@ class _FormatterInstance(AstVisitor):
         self._visit_block(stmt.body, ctx + 1)
 
     def _visit_return(self, stmt, ctx: _Ctx):
-        s = self._visit_block(stmt.expr, ctx)
+        s = self._visit_expr(stmt.expr, ctx)
         self._add_line(f'return {s}', ctx)
 
     def _visit_block(self, block, ctx: _Ctx):

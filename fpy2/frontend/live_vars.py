@@ -96,10 +96,10 @@ class LiveVarAnalysisInstance(AstVisitor):
             live |= self._visit_expr(iterable, ctx)
         return live
 
-    def _visit_ref_expr(self, e, ctx):
-        live = self._visit(e.value, ctx)
+    def _visit_ref_expr(self, e, ctx) -> _LiveSet:
+        live = self._visit_expr(e.value, ctx)
         for s in e.slices:
-            live |= self._visit(s, ctx)
+            live |= self._visit_expr(s, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
         return live
 
