@@ -194,17 +194,3 @@ class AstVisitor(ABC):
                 return self._visit_return(stmt, ctx)
             case _:
                 raise NotImplementedError(f'unreachable: {stmt}')
-
-    def _visit(self, e: Ast, ctx: Any) -> Any:
-        """Dispatch to the appropriate visit method for an AST node."""
-        match e:
-            case Expr():
-                return self._visit_expr(e, ctx)
-            case Stmt():
-                return self._visit_statement(e, ctx)
-            case Block():
-                return self._visit_block(e, ctx)
-            case FunctionDef():
-                return self._visit_function(e, ctx)
-            case _:
-                raise NotImplementedError(f'no visitor method for {repr(e)}')

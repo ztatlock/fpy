@@ -79,27 +79,25 @@ class DefinitionAnalysisInstance(AstVisitor):
         return ctx
 
     def _visit_if_stmt(self, stmt, ctx: _DefSet):
-        ift_defs = self._visit(stmt.ift, ctx)
+        ift_defs = self._visit_block(stmt.ift, ctx)
         if stmt.iff is None:
             return ctx | ift_defs
         else:
-            iff_defs = self._visit(stmt.iff, ctx)
+            iff_defs = self._visit_block(stmt.iff, ctx)
             return ctx | ift_defs | iff_defs
 
     def _visit_while_stmt(self, stmt, ctx: _DefSet):
-        block_defs = self._visit(stmt.body, ctx)
+        block_defs = self._visit_block(stmt.body, ctx)
         return ctx | block_defs
 
     def _visit_for_stmt(self, stmt, ctx: _DefSet):
-        block_defs = self._visit(stmt.body, ctx)
+        block_defs = self._visit_block(stmt.body, ctx)
         return ctx | block_defs
 
     def _visit_context(self, stmt, ctx: _DefSet):
         if stmt.name is not None:
             ctx = ctx | { stmt.name }
-        return self._visit(stmt.body, ctx)
-
-        raise NotImplementedError
+        return self._visit_block(stmt.body, ctx)
 
     def _visit_return(self, stmt, ctx: _DefSet):
         return set(ctx)
@@ -108,7 +106,7 @@ class DefinitionAnalysisInstance(AstVisitor):
         def_in = ctx
         def_out: _DefSet = set()
         for stmt in block.stmts:
-            def_out = self._visit(stmt, def_out)
+            def_out = self._visit_statement(stmt, def_out)
         block.attribs[DefinitionAnalysis.analysis_name] = (def_in, def_out)
         return def_out
 
@@ -116,7 +114,11 @@ class DefinitionAnalysisInstance(AstVisitor):
         ctx = set(ctx)
         for arg in func.args:
             ctx.add(arg.name)
-        self._visit(func.body, ctx)
+        self._visit_block(func.body, ctx)
+
+    # for typing hint
+    def _visit_statement(self, stmt, ctx: _DefSet) -> _DefSet:
+        return super()._visit_statement(stmt, ctx)
 
 class DefinitionAnalysis:
     """
