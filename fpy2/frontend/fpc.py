@@ -54,6 +54,7 @@ _unary_table = {
     'signbit': UnaryOpKind.SIGNBIT,
     'cast': UnaryOpKind.CAST,
     'range': UnaryOpKind.RANGE,
+    'dim': UnaryOpKind.DIM,
 }
 
 _binary_table = {
@@ -500,14 +501,11 @@ class _FPCore2FPy:
         # compile arguments
         args: list[Argument] = []
         for name, arg_props, shape in f.inputs:
-            match (arg_props, shape):
-                case ({}, None):
-                    t = self.gensym.fresh(name)
-                    arg = Argument(t, None, None)
-                    args.append(arg)
-                    ctx.env[name] = t
-                case _:
-                    raise NotImplementedError(name, arg_props, shape)
+            # TODO: argument properties and shape
+            t = self.gensym.fresh(name)
+            arg = Argument(t, None, None)
+            args.append(arg)
+            ctx.env[name] = t
 
         # compile function body
         e = self._visit(f.e, ctx)

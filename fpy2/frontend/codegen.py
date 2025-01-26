@@ -164,6 +164,9 @@ class _IRCodegenInstance(AstVisitor):
             case UnaryOpKind.RANGE:
                 arg = self._visit(e.arg, ctx)
                 return ir.Range(arg)
+            case UnaryOpKind.DIM:
+                arg = self._visit(e.arg, ctx)
+                return ir.Dim(arg)
             case _:
                 raise NotImplementedError('unexpected op', e.op)
 

@@ -76,8 +76,9 @@ class UnaryOpKind(Enum):
     ISNORMAL = 36
     SIGNBIT = 37
     CAST = 38
-    # unary generator
+    # tensor operations
     RANGE = 39
+    DIM = 40
 
     def __str__(self):
         return self.name.lower()
