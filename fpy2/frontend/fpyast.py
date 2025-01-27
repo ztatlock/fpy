@@ -409,19 +409,21 @@ class Block(Ast):
     stmts: list[Stmt]
 
     def __init__(self, stmts: list[Stmt]):
-        assert stmts != [], "block must contain at least one statement"
-        first_loc = stmts[0].loc
-        last_loc = stmts[-1].loc
-        if first_loc is None or last_loc is None:
+        if stmts == []:
             loc = None
         else:
-            loc = Location(
-                first_loc.source,
-                first_loc.start_line,
-                first_loc.start_column,
-                last_loc.end_line,
-                last_loc.end_column
-            )
+            first_loc = stmts[0].loc
+            last_loc = stmts[-1].loc
+            if first_loc is None or last_loc is None:
+                loc = None
+            else:
+                loc = Location(
+                    first_loc.source,
+                    first_loc.start_line,
+                    first_loc.start_column,
+                    last_loc.end_line,
+                    last_loc.end_column
+                )
 
         super().__init__(loc)
         self.stmts = stmts
