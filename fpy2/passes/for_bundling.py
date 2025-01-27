@@ -21,7 +21,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
         self.gensym = Gensym(*names)
 
     def apply(self) -> FunctionDef:
-        return self._visit(self.func, {})
+        return self._visit_function(self.func, {})
 
     #
     #  a_1 = phi(a_0, a_2)
@@ -57,7 +57,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
             init_stmt = VarAssign(phi_init, AnyType(), TupleExpr(*phi_vars))
 
             # recurse on iterable
-            iter_expr = self._visit(stmt.iterable, None)
+            iter_expr = self._visit_expr(stmt.iterable, None)
 
             # deconstruct unified phi variable
             phi_names = [phi.name for phi in stmt.phis]
@@ -84,7 +84,7 @@ class _ForBundlingInstance(DefaultTransformVisitor):
                 b = self._visit_for_stmt(stmt, None)
                 stmts.extend(b.stmts)
             else:
-                stmt, _ = self._visit(stmt, None)
+                stmt, _ = self._visit_statement(stmt, None)
                 stmts.append(stmt)
         return Block(stmts), None
 

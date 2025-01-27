@@ -125,7 +125,7 @@ class _Interpreter(ReduceVisitor):
                         raise NotImplementedError(f'argument is a scalar, got data {val}')
                 case _:
                     raise NotImplementedError(f'unknown argument type {arg.ty}')
-        return self._visit(func.body, ctx)
+        return self._visit_block(func.body, ctx)
 
     def _visit_var(self, e, ctx: EvalCtx):
         if e.name not in ctx.bindings:
@@ -161,14 +161,14 @@ class _Interpreter(ReduceVisitor):
         fn = _method_table[e.name]
         args: list[Digital] = []
         for arg in e.children:
-            val = self._visit(arg, ctx)
+            val = self._visit_expr(arg, ctx)
             if not isinstance(val, Digital):
                 raise TypeError(f'expected a real number argument for {e.name}, got {val}')
             args.append(val)
         return fn(*args)
     
     def _apply_not(self, e: Not, ctx: EvalCtx):
-        arg = self._visit(e.children[0], ctx)
+        arg = self._visit_expr(e.children[0], ctx)
         if not isinstance(arg, bool):
             raise TypeError(f'expected a boolean argument, got {arg}')
         return not arg
@@ -176,7 +176,7 @@ class _Interpreter(ReduceVisitor):
     def _apply_and(self, e: And, ctx: EvalCtx):
         args: list[bool] = []
         for arg in e.children:
-            val = self._visit(arg, ctx)
+            val = self._visit_expr(arg, ctx)
             if not isinstance(val, bool):
                 raise TypeError(f'expected a boolean argument, got {val}')
             args.append(val)
@@ -185,14 +185,14 @@ class _Interpreter(ReduceVisitor):
     def _apply_or(self, e: Or, ctx: EvalCtx):
         args: list[bool] = []
         for arg in e.children:
-            val = self._visit(arg, ctx)
+            val = self._visit_expr(arg, ctx)
             if not isinstance(val, bool):
                 raise TypeError(f'expected a boolean argument, got {val}')
             args.append(val)
         return any(args)
     
     def _apply_range(self, e: Range, ctx: EvalCtx):
-        stop = self._visit(e.children[0], ctx)
+        stop = self._visit_expr(e.children[0], ctx)
         if not isinstance(stop, Digital):
             raise TypeError(f'expected a real number argument, got {stop}')
         if not stop.is_integer():
@@ -231,25 +231,25 @@ class _Interpreter(ReduceVisitor):
                 raise NotImplementedError('unknown comparison operator', op)
 
     def _visit_compare(self, e, ctx: EvalCtx):
-        lhs = self._visit(e.children[0], ctx)
+        lhs = self._visit_expr(e.children[0], ctx)
         for op, arg in zip(e.ops, e.children[1:]):
-            rhs = self._visit(arg, ctx)
+            rhs = self._visit_expr(arg, ctx)
             if not self._apply_cmp2(op, lhs, rhs):
                 return False
             lhs = rhs
         return True
 
     def _visit_tuple_expr(self, e, ctx: EvalCtx):
-        return NDArray([self._visit(x, ctx) for x in e.children])
+        return NDArray([self._visit_expr(x, ctx) for x in e.children])
 
     def _visit_tuple_ref(self, e, ctx: EvalCtx):
-        value = self._visit(e.value, ctx)
+        value = self._visit_expr(e.value, ctx)
         if not isinstance(value, NDArray):
             raise TypeError(f'expected a tensor, got {value}')
 
         slices: list[int] = []
         for s in e.slices:
-            val = self._visit(s, ctx)
+            val = self._visit_expr(s, ctx)
             if not isinstance(val, Digital):
                 raise TypeError(f'expected a real number slice, got {val}')
             if not val.is_integer():
@@ -259,30 +259,30 @@ class _Interpreter(ReduceVisitor):
         return value[slices]
 
     def _visit_tuple_set(self, e, ctx: EvalCtx):
-        value = self._visit(e.array, ctx)
+        value = self._visit_expr(e.array, ctx)
         if not isinstance(value, NDArray):
             raise TypeError(f'expected a tensor, got {value}')
         value = NDArray(value) # make a copy
 
         slices: list[int] = []
         for s in e.slices:
-            val = self._visit(s, ctx)
+            val = self._visit_expr(s, ctx)
             if not isinstance(val, Digital):
                 raise TypeError(f'expected a real number slice, got {val}')
             if not val.is_integer():
                 raise TypeError(f'expected an integer slice, got {val}')
             slices.append(int(val))
 
-        val = self._visit(e.value, ctx)
+        val = self._visit_expr(e.value, ctx)
         value[slices] = val
         return value
 
     def _apply_comp(self, bindings: list[tuple[Expr, Expr]], elt: Expr, ctx: EvalCtx, elts: list[Any]):
         if bindings == []:
-            elts.append(self._visit(elt, ctx))
+            elts.append(self._visit_expr(elt, ctx))
         else:
             var, iterable = bindings[0]
-            array = self._visit(iterable, ctx)
+            array = self._visit_expr(iterable, ctx)
             if not isinstance(array, NDArray):
                 raise TypeError(f'expected a tensor, got {array}')
             for val in array:
@@ -295,13 +295,13 @@ class _Interpreter(ReduceVisitor):
         return NDArray(elts)
 
     def _visit_if_expr(self, e, ctx: EvalCtx):
-        cond = self._visit(e.cond, ctx)
+        cond = self._visit_expr(e.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
-        return self._visit(e.ift if cond else e.iff, ctx)
+        return self._visit_expr(e.ift if cond else e.iff, ctx)
 
     def _visit_var_assign(self, stmt, ctx: EvalCtx):
-        val = self._visit(stmt.expr, ctx)
+        val = self._visit_expr(stmt.expr, ctx)
         return ctx.let([(stmt.var, val)])
 
     def _unpack_tuple(self, binding: TupleBinding, val: NDArray, ctx: EvalCtx):
@@ -318,7 +318,7 @@ class _Interpreter(ReduceVisitor):
         return ctx
 
     def _visit_tuple_assign(self, stmt, ctx: EvalCtx):
-        val = self._visit(stmt.expr, ctx)
+        val = self._visit_expr(stmt.expr, ctx)
         if not isinstance(val, NDArray):
             raise TypeError(f'expected a tuple, got {val}')
         return self._unpack_tuple(stmt.binding, val, ctx)
@@ -331,7 +331,7 @@ class _Interpreter(ReduceVisitor):
         # evaluate indices
         slices: list[int] = []
         for s in stmt.slices:
-            val = self._visit(s, ctx)
+            val = self._visit_expr(s, ctx)
             if not isinstance(val, Digital):
                 raise TypeError(f'expected a real number slice, got {val}')
             if not val.is_integer():
@@ -339,16 +339,16 @@ class _Interpreter(ReduceVisitor):
             slices.append(int(val))
 
         # evaluate and update array
-        val = self._visit(stmt.expr, ctx)
+        val = self._visit_expr(stmt.expr, ctx)
         array[slices] = val
         return ctx
 
     def _visit_if1_stmt(self, stmt, ctx: EvalCtx):
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
         elif cond:
-            ctx = self._visit(stmt.body, ctx)
+            ctx = self._visit_block(stmt.body, ctx)
             for phi in stmt.phis:
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.rhs])])
         else:
@@ -357,15 +357,15 @@ class _Interpreter(ReduceVisitor):
         return ctx
 
     def _visit_if_stmt(self, stmt, ctx: EvalCtx):
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
         elif cond:
-            ctx = self._visit(stmt.ift, ctx)
+            ctx = self._visit_block(stmt.ift, ctx)
             for phi in stmt.phis:
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
         else:
-            ctx = self._visit(stmt.iff, ctx)
+            ctx = self._visit_block(stmt.iff, ctx)
             for phi in stmt.phis:
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.rhs])])
         return ctx
@@ -374,42 +374,42 @@ class _Interpreter(ReduceVisitor):
         for phi in stmt.phis:
             ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
         
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
 
         while cond:
-            ctx = self._visit(stmt.body, ctx)
+            ctx = self._visit_block(stmt.body, ctx)
             for phi in stmt.phis:
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.rhs])])
 
-            cond = self._visit(stmt.cond, ctx)
+            cond = self._visit_expr(stmt.cond, ctx)
             if not isinstance(cond, bool):
                 raise TypeError(f'expected a boolean, got {cond}')
 
         return ctx
 
-    def _visit_for_stmt(self, stmt, ctx: EvalCtx):        
+    def _visit_for_stmt(self, stmt, ctx: EvalCtx):
         for phi in stmt.phis:
             ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
 
-        iterable = self._visit(stmt.iterable, ctx)
+        iterable = self._visit_expr(stmt.iterable, ctx)
         if not isinstance(iterable, NDArray):
             raise TypeError(f'expected a tensor, got {iterable}')
 
         for val in iterable:
             ctx = ctx.let([(stmt.var, val)])
-            ctx = self._visit(stmt.body, ctx)
+            ctx = self._visit_block(stmt.body, ctx)
             for phi in stmt.phis:
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.rhs])])
 
         return ctx
 
     def _visit_context(self, stmt, ctx: EvalCtx):
-        return self._visit(stmt.body, ctx)
+        return self._visit_block(stmt.body, ctx)
 
     def _visit_return(self, stmt, ctx: EvalCtx):
-        return self._visit(stmt.expr, ctx)
+        return self._visit_expr(stmt.expr, ctx)
 
     def _visit_phis(self, phis, lctx, rctx):
         raise NotImplementedError('do not call directly')

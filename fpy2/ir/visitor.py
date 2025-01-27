@@ -237,20 +237,6 @@ class BaseVisitor(ABC):
             case _:
                 raise NotImplementedError('no visitor method for', stmt)
 
-    def _visit(self, e: Expr | Stmt | Block | FunctionDef, ctx: Any):
-        """Dynamic dispatch for all primary `AST` nodes."""
-        match e:
-            case Expr():
-                return self._visit_expr(e, ctx)
-            case Stmt():
-                return self._visit_statement(e, ctx)
-            case Block():
-                return self._visit_block(e, ctx)
-            case FunctionDef():
-                return self._visit_function(e, ctx)
-            case _:
-                raise NotImplementedError('no visitor method for', e)
-
 # Derived visitor types
 
 class Visitor(BaseVisitor):
@@ -289,74 +275,74 @@ class DefaultVisitor(Visitor):
 
     def _visit_unknown(self, e: UnknownCall, ctx: Any):
         for c in e.children:
-            self._visit(c, ctx)
+            self._visit_expr(c, ctx)
 
     def _visit_nary_expr(self, e: NaryExpr, ctx: Any):
         for c in e.children:
-            self._visit(c, ctx)
+            self._visit_expr(c, ctx)
 
     def _visit_compare(self, e: Compare, ctx: Any):
         for c in e.children:
-            self._visit(c, ctx)
+            self._visit_expr(c, ctx)
 
     def _visit_tuple_expr(self, e: TupleExpr, ctx: Any):
         for c in e.children:
-            self._visit(c, ctx)
+            self._visit_expr(c, ctx)
 
     def _visit_tuple_ref(self, e: TupleRef, ctx: Any):
-        self._visit(e.value, ctx)
+        self._visit_expr(e.value, ctx)
         for s in e.slices:
-            self._visit(s, ctx)
+            self._visit_expr(s, ctx)
 
     def _visit_tuple_set(self, e: TupleSet, ctx: Any):
-        self._visit(e.array, ctx)
+        self._visit_expr(e.array, ctx)
         for s in e.slices:
-            self._visit(s, ctx)
-        self._visit(e.value, ctx)
+            self._visit_expr(s, ctx)
+        self._visit_expr(e.value, ctx)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: Any):
         for iterable in e.iterables:
-            self._visit(iterable, ctx)
-        self._visit(e.elt, ctx)
+            self._visit_expr(iterable, ctx)
+        self._visit_expr(e.elt, ctx)
 
     def _visit_if_expr(self, e: IfExpr, ctx: Any):
-        self._visit(e.cond, ctx)
-        self._visit(e.ift, ctx)
-        self._visit(e.iff, ctx)
+        self._visit_expr(e.cond, ctx)
+        self._visit_expr(e.ift, ctx)
+        self._visit_expr(e.iff, ctx)
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: Any):
-        self._visit(stmt.expr, ctx)
+        self._visit_expr(stmt.expr, ctx)
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
-        self._visit(stmt.expr, ctx)
+        self._visit_expr(stmt.expr, ctx)
 
     def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
         for s in stmt.slices:
-            self._visit(s, ctx)
-        self._visit(stmt.expr, ctx)
+            self._visit_expr(s, ctx)
+        self._visit_expr(stmt.expr, ctx)
 
     def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
-        self._visit(stmt.cond, ctx)
-        self._visit(stmt.body, ctx)
+        self._visit_expr(stmt.cond, ctx)
+        self._visit_block(stmt.body, ctx)
 
     def _visit_if_stmt(self, stmt: IfStmt, ctx: Any):
-        self._visit(stmt.cond, ctx)
-        self._visit(stmt.ift, ctx)
-        self._visit(stmt.iff, ctx)
+        self._visit_expr(stmt.cond, ctx)
+        self._visit_block(stmt.ift, ctx)
+        self._visit_block(stmt.iff, ctx)
 
     def _visit_while_stmt(self, stmt: WhileStmt, ctx: Any):
-        self._visit(stmt.cond, ctx)
-        self._visit(stmt.body, ctx)
+        self._visit_expr(stmt.cond, ctx)
+        self._visit_block(stmt.body, ctx)
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
-        self._visit(stmt.iterable, ctx)
-        self._visit(stmt.body, ctx)
+        self._visit_expr(stmt.iterable, ctx)
+        self._visit_block(stmt.body, ctx)
 
     def _visit_context(self, stmt: ContextStmt, ctx: Any):
-        self._visit(stmt.body, ctx)
+        self._visit_block(stmt.body, ctx)
 
     def _visit_return(self, stmt: Return, ctx: Any):
-        self._visit(stmt.expr, ctx)
+        self._visit_expr(stmt.expr, ctx)
 
     def _visit_phis(self, phis, lctx, rctx):
         pass
@@ -366,10 +352,10 @@ class DefaultVisitor(Visitor):
 
     def _visit_block(self, block: Block, ctx: Any):
         for stmt in block.stmts:
-            self._visit(stmt, ctx)
+            self._visit_statement(stmt, ctx)
 
     def _visit_function(self, func: FunctionDef, ctx: Any):
-        self._visit(func.body, ctx)
+        self._visit_block(func.body, ctx)
 
 
 class DefaultTransformVisitor(TransformVisitor):
@@ -400,62 +386,63 @@ class DefaultTransformVisitor(TransformVisitor):
         return Constant(e.val)
 
     def _visit_unknown(self, e: UnknownCall, ctx: Any):
-        args = [self._visit(c, ctx) for c in e.children]
+        args = [self._visit_expr(c, ctx) for c in e.children]
         return UnknownCall(e.name, *args)
 
     def _visit_nary_expr(self, e: NaryExpr, ctx: Any):
         match e:
             case UnaryExpr():
-                arg0 = self._visit(e.children[0], ctx)
+                arg0 = self._visit_expr(e.children[0], ctx)
                 return type(e)(arg0)
             case BinaryExpr():
-                arg0 = self._visit(e.children[0], ctx)
-                arg1 = self._visit(e.children[1], ctx)
+                arg0 = self._visit_expr(e.children[0], ctx)
+                arg1 = self._visit_expr(e.children[1], ctx)
                 return type(e)(arg0, arg1)
             case TernaryExpr():
-                arg0 = self._visit(e.children[0], ctx)
-                arg1 = self._visit(e.children[1], ctx)
-                arg2 = self._visit(e.children[2], ctx)
+                arg0 = self._visit_expr(e.children[0], ctx)
+                arg1 = self._visit_expr(e.children[1], ctx)
+                arg2 = self._visit_expr(e.children[2], ctx)
                 return type(e)(arg0, arg1, arg2)
             case _:
-                args = [self._visit(c, ctx) for c in e.children]
+                args = [self._visit_expr(c, ctx) for c in e.children]
                 return type(e)(*args)
 
     def _visit_compare(self, e: Compare, ctx: Any):
         ops = [op for op in e.ops]
-        children = [self._visit(c, ctx) for c in e.children]
+        children = [self._visit_expr(c, ctx) for c in e.children]
         return Compare(ops, children)
 
     def _visit_tuple_expr(self, e: TupleExpr, ctx: Any):
-        return TupleExpr(*[self._visit(c, ctx) for c in e.children])
+        children = [self._visit_expr(c, ctx) for c in e.children]
+        return TupleExpr(*children)
 
     def _visit_tuple_ref(self, e: TupleRef, ctx: Any):
-        value = self._visit(e.value, ctx)
-        slices = [self._visit(s, ctx) for s in e.slices]
+        value = self._visit_expr(e.value, ctx)
+        slices = [self._visit_expr(s, ctx) for s in e.slices]
         return TupleRef(value, *slices)
 
     def _visit_tuple_set(self, e: TupleSet, ctx: Any):
-        value = self._visit(e.array, ctx)
-        slices = [self._visit(s, ctx) for s in e.slices]
-        expr = self._visit(e.value, ctx)
+        value = self._visit_expr(e.array, ctx)
+        slices = [self._visit_expr(s, ctx) for s in e.slices]
+        expr = self._visit_expr(e.value, ctx)
         return TupleSet(value, slices, expr)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: Any):
-        iterables = [self._visit(iterable, ctx) for iterable in e.iterables]
-        elt = self._visit(e.elt, ctx)
+        iterables = [self._visit_expr(iterable, ctx) for iterable in e.iterables]
+        elt = self._visit_expr(e.elt, ctx)
         return CompExpr(e.vars, iterables, elt)
 
     def _visit_if_expr(self, e: IfExpr, ctx: Any):
-        cond = self._visit(e.cond, ctx)
-        ift = self._visit(e.ift, ctx)
-        iff = self._visit(e.iff, ctx)
+        cond = self._visit_expr(e.cond, ctx)
+        ift = self._visit_expr(e.ift, ctx)
+        iff = self._visit_expr(e.iff, ctx)
         return IfExpr(cond, ift, iff)
 
     #######################################################
     # Statements
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: Any):
-        val = self._visit(stmt.expr, ctx)
+        val = self._visit_expr(stmt.expr, ctx)
         s = VarAssign(stmt.var, stmt.ty, val)
         return s, ctx
 
@@ -472,25 +459,25 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: Any):
         vars = self._copy_tuple_binding(stmt.binding)
-        val = self._visit(stmt.expr, ctx)
+        val = self._visit_expr(stmt.expr, ctx)
         s = TupleAssign(vars, stmt.ty, val)
         return s, ctx
 
     def _visit_ref_assign(self, stmt: RefAssign, ctx: Any):
-        slices = [self._visit(s, ctx) for s in stmt.slices]
-        expr = self._visit(stmt.expr, ctx)
+        slices = [self._visit_expr(s, ctx) for s in stmt.slices]
+        expr = self._visit_expr(stmt.expr, ctx)
         s = RefAssign(stmt.var, slices, expr)
         return s, ctx
 
     def _visit_if1_stmt(self, stmt: If1Stmt, ctx: Any):
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         body, rctx = self._visit_block(stmt.body, ctx)
         phis, ctx = self._visit_phis(stmt.phis, ctx, rctx)
         s = If1Stmt(cond, body, phis)
         return s, ctx
 
     def _visit_if_stmt(self, stmt: IfStmt, ctx: Any):
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         ift, lctx = self._visit_block(stmt.ift, ctx)
         iff, rctx = self._visit_block(stmt.iff, ctx)
         phis, ctx = self._visit_phis(stmt.phis, lctx, rctx)
@@ -499,7 +486,7 @@ class DefaultTransformVisitor(TransformVisitor):
 
     def _visit_while_stmt(self, stmt: WhileStmt, ctx: Any):
         init_phis, init_ctx = self._visit_loop_phis(stmt.phis, ctx, None)
-        cond = self._visit(stmt.cond, init_ctx)
+        cond = self._visit_expr(stmt.cond, init_ctx)
         body, rctx = self._visit_block(stmt.body, init_ctx)
 
         phis, ctx = self._visit_loop_phis(init_phis, ctx, rctx)
@@ -507,7 +494,7 @@ class DefaultTransformVisitor(TransformVisitor):
         return s, ctx
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: Any):
-        iterable = self._visit(stmt.iterable, ctx)
+        iterable = self._visit_expr(stmt.iterable, ctx)
         init_phis, init_ctx = self._visit_loop_phis(stmt.phis, ctx, None)
         body, rctx = self._visit_block(stmt.body, init_ctx)
 
@@ -521,7 +508,7 @@ class DefaultTransformVisitor(TransformVisitor):
         return s, ctx
 
     def _visit_return(self, stmt: Return, ctx: Any):
-        s = Return(self._visit(stmt.expr, ctx))
+        s = Return(self._visit_expr(stmt.expr, ctx))
         return s, ctx
 
     #######################################################
@@ -541,7 +528,7 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_block(self, block: Block, ctx: Any):
         stmts: list[Stmt] = []
         for stmt in block.stmts:
-            stmt, ctx = self._visit(stmt, ctx)
+            stmt, ctx = self._visit_statement(stmt, ctx)
             stmts.append(stmt)
         return Block(stmts), ctx
 
@@ -551,3 +538,14 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_function(self, func: FunctionDef, ctx: Any):
         body, _ = self._visit_block(func.body, ctx)
         return FunctionDef(func.name, func.args, body, func.ty, func.ctx)
+
+    #######################################################
+    # Dynamic dispatch
+
+    # override for typing hint
+    def _visit_expr(self, e: Expr, ctx: Any) -> Expr:
+        return super()._visit_expr(e, ctx)
+
+    # override for typing hint
+    def _visit_statement(self, stmt: Stmt, ctx: Any) -> tuple[Stmt, Any]:
+        return super()._visit_statement(stmt, ctx)

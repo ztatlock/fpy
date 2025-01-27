@@ -26,17 +26,13 @@ class _SSAInstance(DefaultTransformVisitor):
         self.reaches = reaches
 
     def apply(self) -> FunctionDef:
-        return self._visit(self.func, {})
-
-    # override to get typing hint
-    def _visit(self, e, ctx):
-        return super()._visit(e, ctx)
+        return self._visit_function(self.func, {})
 
     def _visit_var(self, e, ctx: _Ctx):
         return Var(ctx[e.name])
 
     def _visit_comp_expr(self, e, ctx: _Ctx):
-        iterables = [self._visit(iterable, ctx) for iterable in e.iterables]
+        iterables = [self._visit_expr(iterable, ctx) for iterable in e.iterables]
 
         ctx = ctx.copy()
         vars: list[str] = []
@@ -45,12 +41,12 @@ class _SSAInstance(DefaultTransformVisitor):
             vars.append(name)
             ctx[var] = name
 
-        elt = self._visit(e.elt, ctx)
+        elt = self._visit_expr(e.elt, ctx)
         return CompExpr(vars, iterables, elt)
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: _Ctx):
         # visit the expression
-        e = self._visit(stmt.expr, ctx)
+        e = self._visit_expr(stmt.expr, ctx)
 
         # generate a new name if needed
         t = self.gensym.fresh(stmt.var)
@@ -73,19 +69,19 @@ class _SSAInstance(DefaultTransformVisitor):
         return TupleBinding(new_vars), ctx
 
     def _visit_tuple_assign(self, e: TupleAssign, ctx: _Ctx):
-        expr = self._visit(e.expr, ctx)
+        expr = self._visit_expr(e.expr, ctx)
         binding, ctx = self._visit_tuple_binding(e.binding, ctx)
         return TupleAssign(binding, e.ty, expr), ctx
 
     def _visit_ref_assign(self, stmt, ctx: _Ctx):
         var = ctx[stmt.var]
-        slices = [self._visit(slice, ctx) for slice in stmt.slices]
-        expr = self._visit(stmt.expr, ctx)
+        slices = [self._visit_expr(slice, ctx) for slice in stmt.slices]
+        expr = self._visit_expr(stmt.expr, ctx)
         return RefAssign(var, slices, expr), ctx
 
     def _visit_if1_stmt(self, stmt, ctx: _Ctx):
         # visit condition
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         body, body_ctx = self._visit_block(stmt.body, ctx)
 
         # update existing phi nodes
@@ -118,7 +114,7 @@ class _SSAInstance(DefaultTransformVisitor):
 
     def _visit_if_stmt(self, stmt, ctx: _Ctx):
         # visit condition and branches
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         ift, ift_ctx = self._visit_block(stmt.ift, ctx)
         iff, iff_ctx = self._visit_block(stmt.iff, ctx)
         merged_vars = ift_ctx.keys() & iff_ctx.keys()
@@ -168,7 +164,7 @@ class _SSAInstance(DefaultTransformVisitor):
             loop_ctx[var] = t
 
         # visit condition and body
-        cond = self._visit(stmt.cond, loop_ctx)
+        cond = self._visit_expr(stmt.cond, loop_ctx)
         body, body_ctx = self._visit_block(stmt.body, loop_ctx)
 
         # update existing phi nodes
@@ -203,7 +199,7 @@ class _SSAInstance(DefaultTransformVisitor):
 
     def _visit_for_stmt(self, stmt, ctx: _Ctx):
         # visit iterable
-        iterable = self._visit(stmt.iterable, ctx)
+        iterable = self._visit_expr(stmt.iterable, ctx)
         iter_name = self.gensym.fresh(stmt.var)
         ctx = { **ctx, stmt.var: iter_name }
 
@@ -262,7 +258,7 @@ class _SSAInstance(DefaultTransformVisitor):
         return ContextStmt(stmt.name, stmt.props, body), body_ctx
 
     def _visit_return(self, stmt, ctx):
-        s = Return(self._visit(stmt.expr, ctx))
+        s = Return(self._visit_expr(stmt.expr, ctx))
         return s, ctx
 
     def _visit_phis(self, phis: list[PhiNode], lctx: _Ctx, rctx: _Ctx):
@@ -277,8 +273,12 @@ class _SSAInstance(DefaultTransformVisitor):
             self.gensym.reserve(arg.name)
             ctx[arg.name] = arg.name
 
-        body, _ = self._visit(func.body, ctx)
+        body, _ = self._visit_block(func.body, ctx)
         return FunctionDef(func.name, func.args, body, func.ty, func.ctx)
+
+    # override to get typing hint
+    def _visit_statement(self, stmt: Stmt, ctx: _Ctx) -> tuple[Stmt, _Ctx]:
+        return super()._visit_statement(stmt, ctx)
 
     # override to get typing hint
     def _visit_block(self, block, ctx: _Ctx) -> tuple[Block, _Ctx]:

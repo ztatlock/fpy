@@ -26,7 +26,7 @@ class _ReachingDefsInstance(DefaultVisitor):
         self.reaches = {}
 
     def analyze(self):
-        self._visit(self.func, None)
+        self._visit_function(self.func, None)
         return self.reaches
 
     def _visit_var_assign(self, stmt, ctx: _StmtCtx) -> _RetType:
@@ -97,7 +97,7 @@ class _ReachingDefsInstance(DefaultVisitor):
         defs: set[str] = reach_in.copy()
         kill: set[str] = set()
         for stmt in block.stmts:
-            defs, kill = self._visit(stmt, (defs, kill))
+            defs, kill = self._visit_statement(stmt, (defs, kill))
 
         reach_out = defs | (reach_in - kill)
         self.reaches[block] = Reach(reach_in, reach_out, kill)

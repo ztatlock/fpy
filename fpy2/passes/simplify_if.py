@@ -16,14 +16,14 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
     def __init__(self, func: FunctionDef, names: set[str]):
         self.func = func
         self.gensym = Gensym(*names)
-    
-    def apply(self):
-        return self._visit(self.func, None)
 
-    def _visit_if1_stmt(self, stmt: If1Stmt, ctx):
+    def apply(self):
+        return self._visit_function(self.func, None)
+
+    def _visit_if1_stmt(self, stmt: If1Stmt, ctx: None):
         stmts: list[Stmt] = []
         # compile condition
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         # generate temporary if needed
         if not isinstance(cond, Var):
             t = self.gensym.fresh('cond')
@@ -38,10 +38,10 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
             stmts.append(VarAssign(phi.name, AnyType(), ife))
         return Block(stmts)
 
-    def _visit_if_stmt(self, stmt: IfStmt, ctx):
+    def _visit_if_stmt(self, stmt: IfStmt, ctx: None):
         stmts: list[Stmt] = []
         # compile condition
-        cond = self._visit(stmt.cond, ctx)
+        cond = self._visit_expr(stmt.cond, ctx)
         # generate temporary if needed
         if not isinstance(cond, Var):
             t = self.gensym.fresh('cond')
@@ -59,7 +59,7 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
             stmts.append(VarAssign(phi.name, AnyType(), ife))
         return Block(stmts)
 
-    def _visit_block(self, block: Block, ctx):
+    def _visit_block(self, block: Block, ctx: None):
         stmts: list[Stmt] = []
         for stmt in block.stmts:
             match stmt:
@@ -70,7 +70,7 @@ class _SimplifyIfInstance(DefaultTransformVisitor):
                     if_block = self._visit_if_stmt(stmt, ctx)
                     stmts.extend(if_block.stmts)
                 case _:
-                    stmt, _ = self._visit(stmt, ctx)
+                    stmt, _ = self._visit_statement(stmt, ctx)
                     stmts.append(stmt)
         return Block(stmts), None
 

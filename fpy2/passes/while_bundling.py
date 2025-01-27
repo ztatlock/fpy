@@ -26,7 +26,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
         self.gensym = Gensym(*names)
 
     def apply(self) -> FunctionDef:
-        return self._visit(self.func, {})
+        return self._visit_function(self.func, {})
 
     def _visit_var(self, e: Var, ctx: Optional[_CtxType]):
         if ctx is None or e.name not in ctx:
@@ -73,7 +73,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
             cond_ctx: _CtxType = {}
             for i, phi in enumerate(stmt.phis):
                 cond_ctx[phi.name] = TupleRef(Var(phi_name), Integer(i))
-            cond = self._visit(stmt.cond, cond_ctx)
+            cond = self._visit_expr(stmt.cond, cond_ctx)
 
             # deconstruct unified phi variable
             phi_names = [phi.name for phi in stmt.phis]
@@ -99,7 +99,7 @@ class _WhileBundlingInstance(DefaultTransformVisitor):
                 b = self._visit_while_stmt(stmt, None)
                 stmts.extend(b.stmts)
             else:
-                stmt, _ = self._visit(stmt, None)
+                stmt, _ = self._visit_statement(stmt, None)
                 stmts.append(stmt)
         return Block(stmts), None
 

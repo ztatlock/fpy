@@ -17,11 +17,11 @@ class _FuncUpdateInstance(DefaultTransformVisitor):
         self.func = func
 
     def apply(self) -> FunctionDef:
-        return self._visit(self.func, None)
+        return self._visit_function(self.func, None)
 
     def _visit_ref_assign(self, stmt: RefAssign, ctx: None):
-        slices = [self._visit(slice, ctx) for slice in stmt.slices]
-        expr = self._visit(stmt.expr, ctx)
+        slices = [self._visit_expr(slice, ctx) for slice in stmt.slices]
+        expr = self._visit_expr(stmt.expr, ctx)
         e = TupleSet(Var(stmt.var), slices, expr)
         return VarAssign(stmt.var, AnyType(), e), None
 

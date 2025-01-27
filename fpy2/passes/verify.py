@@ -19,7 +19,7 @@ class _VerifyPassInstance(DefaultVisitor):
 
     def check(self):
         self.types = {}
-        self._visit(self.func, set())
+        self._visit_function(self.func, set())
 
     def _visit_var(self, e, ctx: _CtxType):
         if e.name not in ctx:
@@ -27,16 +27,16 @@ class _VerifyPassInstance(DefaultVisitor):
 
     def _visit_comp_expr(self, e, ctx: _CtxType):
         for iterable in e.iterables:
-            self._visit(iterable, ctx)
+            self._visit_expr(iterable, ctx)
         for var in e.vars:
             if var in self.types:
                 raise InvalidIRError(f'reassignment of variable {var}')
             self.types[var] = AnyType()
             ctx.add(var)
-        self._visit(e.elt, ctx)
+        self._visit_expr(e.elt, ctx)
 
     def _visit_var_assign(self, stmt, ctx: _CtxType):
-        self._visit(stmt.expr, ctx)
+        self._visit_expr(stmt.expr, ctx)
         if stmt.var in self.types:
             raise InvalidIRError(f'reassignment of variable {stmt.var}')
         self.types[stmt.var] = AnyType()
@@ -44,7 +44,7 @@ class _VerifyPassInstance(DefaultVisitor):
         return ctx
 
     def _visit_tuple_assign(self, stmt, ctx: _CtxType):
-        self._visit(stmt.expr, ctx)
+        self._visit_expr(stmt.expr, ctx)
         for var in stmt.binding.names():
             if var in self.types:
                 raise InvalidIRError(f'reassignment of variable {var}')
@@ -56,12 +56,12 @@ class _VerifyPassInstance(DefaultVisitor):
         if stmt.var not in ctx:
             raise InvalidIRError(f'undefined variable {stmt.var}')
         for s in stmt.slices:
-            self._visit(s, ctx)
-        self._visit(stmt.expr, ctx)
+            self._visit_expr(s, ctx)
+        self._visit_expr(stmt.expr, ctx)
         return ctx
 
     def _visit_if1_stmt(self, stmt, ctx: _CtxType):
-        self._visit(stmt.cond, ctx)
+        self._visit_expr(stmt.cond, ctx)
         body_ctx = self._visit_block(stmt.body, ctx.copy())
         # check validty of phi nodes and update context
         for phi in stmt.phis:
@@ -80,7 +80,7 @@ class _VerifyPassInstance(DefaultVisitor):
         return ctx
 
     def _visit_if_stmt(self, stmt, ctx: _CtxType):
-        self._visit(stmt.cond, ctx)
+        self._visit_expr(stmt.cond, ctx)
         ift_ctx = self._visit_block(stmt.ift, ctx.copy())
         iff_ctx = self._visit_block(stmt.iff, ctx.copy())
         # check validty of phi nodes and update context
@@ -111,7 +111,7 @@ class _VerifyPassInstance(DefaultVisitor):
             ctx.add(name)
             ctx -= { orig }
         # check condition and body
-        self._visit(stmt.cond, ctx)
+        self._visit_expr(stmt.cond, ctx)
         body_ctx = self._visit_block(stmt.body, ctx.copy())
         # check (partial) validity of phi variables
         for phi in stmt.phis:
@@ -125,7 +125,7 @@ class _VerifyPassInstance(DefaultVisitor):
 
     def _visit_for_stmt(self, stmt, ctx: _CtxType):
         # check iterable expression
-        self._visit(stmt.iterable, ctx)
+        self._visit_expr(stmt.iterable, ctx)
         # bind the loop variable
         if stmt.var in self.types:
             raise InvalidIRError(f'reassignment of variable {stmt.var}')
@@ -159,7 +159,7 @@ class _VerifyPassInstance(DefaultVisitor):
                 raise InvalidIRError(f'reassignment of variable {stmt.name}')
             self.types[stmt.name] = AnyType()
             ctx += stmt.name
-        return self._visit(stmt.body, ctx)
+        return self._visit_block(stmt.body, ctx)
 
     def _visit_block(self, block, ctx: _CtxType):
         for stmt in block.stmts:
@@ -169,18 +169,22 @@ class _VerifyPassInstance(DefaultVisitor):
                 self._visit_return(stmt, ctx)
                 ctx = set()
             else:
-                ctx = self._visit(stmt, ctx.copy())
+                ctx = self._visit_statement(stmt, ctx.copy())
         return ctx
 
     def _visit_function(self, func, ctx: _CtxType):
         for arg in func.args:
             self.types[arg.name] = AnyType()
             ctx.add(arg.name)
-        self._visit(func.body, ctx)
+        self._visit_block(func.body, ctx)
 
-    # override typing hint
-    def _visit(self, e, ctx: _CtxType) -> Any:
-        return super()._visit(e, ctx)
+    # override for typing hint
+    def _visit_expr(self, e, ctx: _CtxType) -> None:
+        super()._visit_expr(e, ctx)
+
+    # override for typing hint
+    def _visit_statement(self, stmt, ctx: _CtxType) -> _CtxType:
+        return super()._visit_statement(stmt, ctx)
 
 
 class VerifyIR:
