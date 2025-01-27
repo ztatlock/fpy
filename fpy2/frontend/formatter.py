@@ -105,7 +105,8 @@ class _FormatterInstance(AstVisitor):
 
     def _visit_call(self, e, ctx: _Ctx):
         args = [self._visit_expr(arg, ctx) for arg in e.args]
-        return f'{e.op}({', '.join(args)})'
+        arg_str = ', '.join(args)
+        return f'{e.op}({arg_str})'
 
     def _visit_tuple_expr(self, e, ctx: _Ctx):
         elts = [self._visit_expr(elt, ctx) for elt in e.args]
