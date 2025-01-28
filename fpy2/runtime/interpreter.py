@@ -373,7 +373,7 @@ class _Interpreter(ReduceVisitor):
     def _visit_while_stmt(self, stmt, ctx: EvalCtx):
         for phi in stmt.phis:
             ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
-        
+
         cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')

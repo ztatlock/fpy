@@ -51,6 +51,7 @@ _unary_table = {
     UnaryOpKind.ISNORMAL: ir.IsNormal,
     UnaryOpKind.SIGNBIT: ir.Signbit,
     UnaryOpKind.CAST: ir.Cast,
+    UnaryOpKind.SHAPE: ir.Shape,
     UnaryOpKind.RANGE: ir.Range,
     UnaryOpKind.DIM: ir.Dim,
 }

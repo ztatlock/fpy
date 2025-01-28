@@ -517,7 +517,7 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_phis(self, phis: list[PhiNode], lctx: Any, rctx: Any):
         phis = [PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty) for phi in phis]
         return phis, lctx # merge function just selects `lctx`
-    
+
     def _visit_loop_phis(self, phis: list[PhiNode], lctx: Any, rctx: Optional[Any]):
         phis = [PhiNode(phi.name, phi.lhs, phi.rhs, phi.ty) for phi in phis]
         return phis, lctx # merge function just selects `lctx`

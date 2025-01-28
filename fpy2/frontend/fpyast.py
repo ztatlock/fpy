@@ -77,8 +77,9 @@ class UnaryOpKind(Enum):
     SIGNBIT = 37
     CAST = 38
     # tensor operations
-    RANGE = 39
-    DIM = 40
+    SHAPE = 39
+    RANGE = 40
+    DIM = 41
 
     def __str__(self):
         return self.name.lower()
@@ -452,11 +453,11 @@ class TupleBinding(Ast):
 
     def __init__(
         self,
-        vars: list[str | Self],
+        vars: Sequence[str | Self],
         loc: Optional[Location]
     ):
         super().__init__(loc)
-        self.elts = vars
+        self.elts = list(vars)
 
     def names(self) -> set[str]:
         ids: set[str] = set()
