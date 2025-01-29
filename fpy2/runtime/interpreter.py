@@ -127,34 +127,34 @@ class _Interpreter(ReduceVisitor):
                     raise NotImplementedError(f'unknown argument type {arg.ty}')
         return self._visit_block(func.body, ctx)
 
-    def _visit_var(self, e, ctx: EvalCtx):
+    def _visit_var(self, e: Var, ctx: EvalCtx):
         if e.name not in ctx.bindings:
             raise RuntimeError(f'unbound variable {e.name}')
         return ctx.bindings[e.name]
 
-    def _visit_decnum(self, e, ctx: EvalCtx):
+    def _visit_decnum(self, e: Decnum, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
 
-    def _visit_integer(self, e, ctx: EvalCtx):
+    def _visit_integer(self, e: Integer, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
 
-    def _visit_hexnum(self, e, ctx: EvalCtx):
+    def _visit_hexnum(self, e: Hexnum, ctx: EvalCtx):
         return MPMF(x=e.val, ctx=ctx)
 
-    def _visit_rational(self, e, ctx: EvalCtx):
+    def _visit_rational(self, e: Rational, ctx: EvalCtx):
         p = Digital(m=e.p, exp=0, inexact=False)
         q = Digital(m=e.q, exp=0, inexact=False)
         x = gmpmath.compute(OP.div, p, q, prec=ctx.p)
         return MPMF._round_to_context(x, ctx=ctx)
 
-    def _visit_constant(self, e, ctx: EvalCtx):
+    def _visit_constant(self, e: Constant, ctx: EvalCtx):
         raise NotImplementedError('unknown constant', e.val)
 
-    def _visit_digits(self, e, ctx: EvalCtx):
+    def _visit_digits(self, e: Digits, ctx: EvalCtx):
         x = gmpmath.compute_digits(e.m, e.e, e.b, prec=ctx.p)
         return MPMF._round_to_context(x, ctx)
 
-    def _visit_unknown(self, e, ctx: EvalCtx):
+    def _visit_unknown(self, e: UnknownCall, ctx: EvalCtx):
         raise NotImplementedError('unknown call', e)
 
     def _apply_method(self, e: NaryExpr, ctx: EvalCtx):
@@ -199,7 +199,7 @@ class _Interpreter(ReduceVisitor):
             raise TypeError(f'expected an integer argument, got {stop}')
         return NDArray([MPMF(i, ctx) for i in range(int(stop))])
 
-    def _visit_nary_expr(self, e, ctx: EvalCtx):
+    def _visit_nary_expr(self, e: NaryExpr, ctx: EvalCtx):
         if e.name in _method_table:
             return self._apply_method(e, ctx)
         elif isinstance(e, Not):
@@ -213,7 +213,7 @@ class _Interpreter(ReduceVisitor):
         else:
             raise NotImplementedError('unknown n-ary expression', e)
 
-    def _apply_cmp2(self, op, lhs, rhs):
+    def _apply_cmp2(self, op: CompareOp, lhs, rhs):
         match op:
             case CompareOp.EQ:
                 return lhs == rhs
@@ -230,7 +230,7 @@ class _Interpreter(ReduceVisitor):
             case _:
                 raise NotImplementedError('unknown comparison operator', op)
 
-    def _visit_compare(self, e, ctx: EvalCtx):
+    def _visit_compare(self, e: Compare, ctx: EvalCtx):
         lhs = self._visit_expr(e.children[0], ctx)
         for op, arg in zip(e.ops, e.children[1:]):
             rhs = self._visit_expr(arg, ctx)
@@ -239,10 +239,10 @@ class _Interpreter(ReduceVisitor):
             lhs = rhs
         return True
 
-    def _visit_tuple_expr(self, e, ctx: EvalCtx):
+    def _visit_tuple_expr(self, e: TupleExpr, ctx: EvalCtx):
         return NDArray([self._visit_expr(x, ctx) for x in e.children])
 
-    def _visit_tuple_ref(self, e, ctx: EvalCtx):
+    def _visit_tuple_ref(self, e: TupleRef, ctx: EvalCtx):
         value = self._visit_expr(e.value, ctx)
         if not isinstance(value, NDArray):
             raise TypeError(f'expected a tensor, got {value}')
@@ -258,7 +258,7 @@ class _Interpreter(ReduceVisitor):
 
         return value[slices]
 
-    def _visit_tuple_set(self, e, ctx: EvalCtx):
+    def _visit_tuple_set(self, e: TupleSet, ctx: EvalCtx):
         value = self._visit_expr(e.array, ctx)
         if not isinstance(value, NDArray):
             raise TypeError(f'expected a tensor, got {value}')
@@ -277,7 +277,13 @@ class _Interpreter(ReduceVisitor):
         value[slices] = val
         return value
 
-    def _apply_comp(self, bindings: list[tuple[Expr, Expr]], elt: Expr, ctx: EvalCtx, elts: list[Any]):
+    def _apply_comp(
+        self,
+        bindings: list[tuple[str, Expr]],
+        elt: Expr,
+        ctx: EvalCtx,
+        elts: list[Any]
+    ):
         if bindings == []:
             elts.append(self._visit_expr(elt, ctx))
         else:
@@ -288,19 +294,19 @@ class _Interpreter(ReduceVisitor):
             for val in array:
                 self._apply_comp(bindings[1:], elt, ctx.let([(var, val)]), elts)
 
-    def _visit_comp_expr(self, e, ctx: EvalCtx):
+    def _visit_comp_expr(self, e: CompExpr, ctx: EvalCtx):
         elts: list[Any] = []
         bindings = [(var, iterable) for var, iterable in zip(e.vars, e.iterables)]
         self._apply_comp(bindings, e.elt, ctx, elts)
         return NDArray(elts)
 
-    def _visit_if_expr(self, e, ctx: EvalCtx):
+    def _visit_if_expr(self, e: IfExpr, ctx: EvalCtx):
         cond = self._visit_expr(e.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
         return self._visit_expr(e.ift if cond else e.iff, ctx)
 
-    def _visit_var_assign(self, stmt, ctx: EvalCtx):
+    def _visit_var_assign(self, stmt: VarAssign, ctx: EvalCtx):
         val = self._visit_expr(stmt.expr, ctx)
         return ctx.let([(stmt.var, val)])
 
@@ -317,13 +323,13 @@ class _Interpreter(ReduceVisitor):
                     raise NotImplementedError('unknown tuple element', elt)
         return ctx
 
-    def _visit_tuple_assign(self, stmt, ctx: EvalCtx):
+    def _visit_tuple_assign(self, stmt: TupleAssign, ctx: EvalCtx):
         val = self._visit_expr(stmt.expr, ctx)
         if not isinstance(val, NDArray):
             raise TypeError(f'expected a tuple, got {val}')
         return self._unpack_tuple(stmt.binding, val, ctx)
 
-    def _visit_ref_assign(self, stmt, ctx: EvalCtx):
+    def _visit_ref_assign(self, stmt: RefAssign, ctx: EvalCtx):
         if stmt.var not in ctx.bindings:
             raise RuntimeError(f'unbound variable {stmt.var}')
         array = ctx.bindings[stmt.var]
@@ -343,7 +349,7 @@ class _Interpreter(ReduceVisitor):
         array[slices] = val
         return ctx
 
-    def _visit_if1_stmt(self, stmt, ctx: EvalCtx):
+    def _visit_if1_stmt(self, stmt: If1Stmt, ctx: EvalCtx):
         cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
@@ -356,7 +362,7 @@ class _Interpreter(ReduceVisitor):
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
         return ctx
 
-    def _visit_if_stmt(self, stmt, ctx: EvalCtx):
+    def _visit_if_stmt(self, stmt: IfStmt, ctx: EvalCtx):
         cond = self._visit_expr(stmt.cond, ctx)
         if not isinstance(cond, bool):
             raise TypeError(f'expected a boolean, got {cond}')
@@ -370,7 +376,7 @@ class _Interpreter(ReduceVisitor):
                 ctx = ctx.let([(phi.name, ctx.bindings[phi.rhs])])
         return ctx
 
-    def _visit_while_stmt(self, stmt, ctx: EvalCtx):
+    def _visit_while_stmt(self, stmt: WhileStmt, ctx: EvalCtx):
         for phi in stmt.phis:
             ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
 
@@ -389,7 +395,7 @@ class _Interpreter(ReduceVisitor):
 
         return ctx
 
-    def _visit_for_stmt(self, stmt, ctx: EvalCtx):
+    def _visit_for_stmt(self, stmt: ForStmt, ctx: EvalCtx):
         for phi in stmt.phis:
             ctx = ctx.let([(phi.name, ctx.bindings[phi.lhs])])
 
@@ -405,10 +411,10 @@ class _Interpreter(ReduceVisitor):
 
         return ctx
 
-    def _visit_context(self, stmt, ctx: EvalCtx):
+    def _visit_context(self, stmt: ContextStmt, ctx: EvalCtx):
         return self._visit_block(stmt.body, ctx)
 
-    def _visit_return(self, stmt, ctx: EvalCtx):
+    def _visit_return(self, stmt: Return, ctx: EvalCtx):
         return self._visit_expr(stmt.expr, ctx)
 
     def _visit_phis(self, phis, lctx, rctx):
