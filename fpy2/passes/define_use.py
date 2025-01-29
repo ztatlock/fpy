@@ -20,7 +20,7 @@ class _DefineUseInstance(DefaultVisitor):
         self.done = True
         return self.uses
 
-    def _visit_var(self, e: Var, ctx):
+    def _visit_var(self, e: Var, ctx: None):
         if e.name not in self.uses:
             raise NotImplementedError(f'undefined variable {e.name}')
         self.uses[e.name].add(e)

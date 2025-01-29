@@ -28,11 +28,11 @@ class _SSAInstance(DefaultTransformVisitor):
     def apply(self) -> FunctionDef:
         return self._visit_function(self.func, {})
 
-    def _visit_var(self, e, ctx: _Ctx):
+    def _visit_var(self, e: Var, ctx: _Ctx):
         return Var(ctx[e.name])
 
-    def _visit_comp_expr(self, e, ctx: _Ctx):
-        iterables = [self._visit_expr(iterable, ctx) for iterable in e.iterables]
+    def _visit_comp_expr(self, e: CompExpr, ctx: _Ctx):
+        iterables = [self._visit_expr(iter, ctx) for iter in e.iterables]
 
         ctx = ctx.copy()
         vars: list[str] = []
@@ -79,7 +79,7 @@ class _SSAInstance(DefaultTransformVisitor):
         expr = self._visit_expr(stmt.expr, ctx)
         return RefAssign(var, slices, expr), ctx
 
-    def _visit_if1_stmt(self, stmt, ctx: _Ctx):
+    def _visit_if1_stmt(self, stmt: If1Stmt, ctx: _Ctx):
         # visit condition
         cond = self._visit_expr(stmt.cond, ctx)
         body, body_ctx = self._visit_block(stmt.body, ctx)
@@ -112,7 +112,7 @@ class _SSAInstance(DefaultTransformVisitor):
         s = If1Stmt(cond, body, new_phis)
         return s, new_ctx
 
-    def _visit_if_stmt(self, stmt, ctx: _Ctx):
+    def _visit_if_stmt(self, stmt: IfStmt, ctx: _Ctx):
         # visit condition and branches
         cond = self._visit_expr(stmt.cond, ctx)
         ift, ift_ctx = self._visit_block(stmt.ift, ctx)
@@ -146,7 +146,7 @@ class _SSAInstance(DefaultTransformVisitor):
         s = IfStmt(cond, ift, iff, new_phis)
         return s, new_ctx
 
-    def _visit_while_stmt(self, stmt, ctx: _Ctx):
+    def _visit_while_stmt(self, stmt: WhileStmt, ctx: _Ctx):
         # compute variables requiring phi node
         reach = self.reaches[stmt.body]
         updated = ctx.keys() & reach.kill_out
@@ -197,7 +197,7 @@ class _SSAInstance(DefaultTransformVisitor):
         s = WhileStmt(cond, body, new_phis)
         return s, new_ctx
 
-    def _visit_for_stmt(self, stmt, ctx: _Ctx):
+    def _visit_for_stmt(self, stmt: ForStmt, ctx: _Ctx):
         # visit iterable
         iterable = self._visit_expr(stmt.iterable, ctx)
         iter_name = self.gensym.fresh(stmt.var)
@@ -252,12 +252,12 @@ class _SSAInstance(DefaultTransformVisitor):
         s = ForStmt(iter_name, stmt.ty, iterable, body, new_phis)
         return s, new_ctx
 
-    def _visit_context(self, stmt, ctx: _Ctx):
+    def _visit_context(self, stmt: ContextStmt, ctx: _Ctx):
         # TODO: what to do about `stmt.name`
         body, body_ctx = self._visit_block(stmt.body, ctx)
         return ContextStmt(stmt.name, stmt.props, body), body_ctx
 
-    def _visit_return(self, stmt, ctx):
+    def _visit_return(self, stmt: Return, ctx):
         s = Return(self._visit_expr(stmt.expr, ctx))
         return s, ctx
 
@@ -267,7 +267,7 @@ class _SSAInstance(DefaultTransformVisitor):
     def _visit_loop_phis(self, phis: list[PhiNode], lctx: _Ctx, rctx: Optional[_Ctx]):
         raise NotImplementedError
 
-    def _visit_function(self, func, ctx: _Ctx):
+    def _visit_function(self, func: FunctionDef, ctx: _Ctx):
         ctx = ctx.copy()
         for arg in func.args:
             self.gensym.reserve(arg.name)
@@ -281,7 +281,7 @@ class _SSAInstance(DefaultTransformVisitor):
         return super()._visit_statement(stmt, ctx)
 
     # override to get typing hint
-    def _visit_block(self, block, ctx: _Ctx) -> tuple[Block, _Ctx]:
+    def _visit_block(self, block: Block, ctx: _Ctx) -> tuple[Block, _Ctx]:
         return super()._visit_block(block, ctx)
 
 class SSA:
