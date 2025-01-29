@@ -7,7 +7,7 @@ from .verify import VerifyIR
 from ..ir import *
 from ..utils import Gensym
 
-_Ctx = dict[str, str]
+_Ctx = dict[NamedId, NamedId]
 
 class _SSAInstance(DefaultTransformVisitor):
     # class _SSAInstance(DefaultTransformVisitor):
@@ -35,11 +35,17 @@ class _SSAInstance(DefaultTransformVisitor):
         iterables = [self._visit_expr(iter, ctx) for iter in e.iterables]
 
         ctx = ctx.copy()
-        vars: list[str] = []
+        vars: list[Id] = []
         for var in e.vars:
-            name = self.gensym.fresh(var)
-            vars.append(name)
-            ctx[var] = name
+            match var:
+                case NamedId():
+                    name = self.gensym.refresh(var)
+                    ctx[var] = name
+                    vars.append(name)
+                case UnderscoreId():
+                    vars.append(var)
+                case _:
+                    raise NotImplementedError('unreachable', var)
 
         elt = self._visit_expr(e.elt, ctx)
         return CompExpr(vars, iterables, elt)
@@ -49,23 +55,34 @@ class _SSAInstance(DefaultTransformVisitor):
         e = self._visit_expr(stmt.expr, ctx)
 
         # generate a new name if needed
-        t = self.gensym.fresh(stmt.var)
-        ctx = { **ctx, stmt.var: t }
-        return VarAssign(t, stmt.ty, e), ctx
+        match stmt.var:
+            case NamedId():
+                t = self.gensym.refresh(stmt.var)
+                ctx = { **ctx, stmt.var: t }
+                s =  VarAssign(t, stmt.ty, e)
+            case UnderscoreId():
+                s = VarAssign(stmt.var, stmt.ty, e)
+            case _:
+                raise NotImplementedError('unreachable', stmt.var)
+
+        return s, ctx
 
     def _visit_tuple_binding(self, vars: TupleBinding, ctx: _Ctx):
-        new_vars: list[str | TupleBinding] = []
+        new_vars: list[Id | TupleBinding] = []
         for name in vars:
-            if isinstance(name, str):
-                # generate a new name if needed
-                t = self.gensym.fresh(name)
-                ctx = { **ctx, name: t }
-                new_vars.append(t)
-            elif isinstance(name, TupleBinding):
-                elts, ctx = self._visit_tuple_binding(name, ctx)
-                new_vars.append(elts)
-            else:
-                raise NotImplementedError('unexpected tuple identifier', name)
+            match name:
+                case NamedId():
+                    # generate a new name if needed
+                    t = self.gensym.refresh(name)
+                    ctx = { **ctx, name: t }
+                    new_vars.append(t)
+                case UnderscoreId():
+                    new_vars.append(name)
+                case TupleBinding():
+                    elts, ctx = self._visit_tuple_binding(name, ctx)
+                    new_vars.append(elts)
+                case _:
+                    raise NotImplementedError('unexpected tuple identifier', name)
         return TupleBinding(new_vars), ctx
 
     def _visit_tuple_assign(self, e: TupleAssign, ctx: _Ctx):
@@ -91,7 +108,7 @@ class _SSAInstance(DefaultTransformVisitor):
             del new_ctx[phi.lhs]
             if phi.lhs in ctx:
                 # TODO: infer type
-                t = self.gensym.fresh(phi.name)
+                t = self.gensym.refresh(phi.name)
                 lhs = ctx[phi.lhs]
                 rhs = body_ctx[phi.rhs]
                 phi = PhiNode(t, lhs, rhs, AnyType())
@@ -104,7 +121,7 @@ class _SSAInstance(DefaultTransformVisitor):
             rhs = body_ctx[var]
             if lhs != rhs:
                 # TODO: infer type
-                t = self.gensym.fresh(var)
+                t = self.gensym.refresh(var)
                 phi = PhiNode(t, lhs, rhs, AnyType())
                 new_phis.append(phi)
                 new_ctx[var] = t
@@ -125,7 +142,7 @@ class _SSAInstance(DefaultTransformVisitor):
         for phi in stmt.phis:
             if phi.lhs in ift_ctx and phi.rhs in iff_ctx:
                 # TODO: infer type
-                t = self.gensym.fresh(phi.name)
+                t = self.gensym.refresh(phi.name)
                 lhs = ift_ctx[phi.lhs]
                 rhs = iff_ctx[phi.rhs]
                 phi = PhiNode(t, lhs, rhs, AnyType())
@@ -138,7 +155,7 @@ class _SSAInstance(DefaultTransformVisitor):
             rhs = iff_ctx[var]
             if lhs != rhs:
                 # TODO: infer type
-                t = self.gensym.fresh(var)
+                t = self.gensym.refresh(var)
                 phi = PhiNode(t, lhs, rhs, AnyType())
                 new_phis.append(phi)
                 new_ctx[var] = t
@@ -154,13 +171,13 @@ class _SSAInstance(DefaultTransformVisitor):
         # create loop context with existing phi names
         loop_ctx = ctx.copy()
         for phi in stmt.phis:
-            t = self.gensym.fresh(phi.name)
+            t = self.gensym.refresh(phi.name)
             loop_ctx[phi.name] = t
             del loop_ctx[phi.lhs]
 
         # add new phi names to loop context
         for var in updated:
-            t = self.gensym.fresh(var)
+            t = self.gensym.refresh(var)
             loop_ctx[var] = t
 
         # visit condition and body
@@ -200,8 +217,16 @@ class _SSAInstance(DefaultTransformVisitor):
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _Ctx):
         # visit iterable
         iterable = self._visit_expr(stmt.iterable, ctx)
-        iter_name = self.gensym.fresh(stmt.var)
-        ctx = { **ctx, stmt.var: iter_name }
+
+        # generate a new name if needed
+        match stmt.var:
+            case NamedId():
+                iter_name = self.gensym.refresh(stmt.var)
+                ctx = { **ctx, stmt.var: iter_name }
+            case UnderscoreId():
+                iter_name = stmt.var
+            case _:
+                raise NotImplementedError('unreachable', stmt.var)
 
         # compute variables requiring phi node
         reach = self.reaches[stmt.body]
@@ -210,13 +235,13 @@ class _SSAInstance(DefaultTransformVisitor):
         # create loop context with existing phi names
         loop_ctx = ctx.copy()
         for phi in stmt.phis:
-            t = self.gensym.fresh(phi.name)
+            t = self.gensym.refresh(phi.name)
             loop_ctx[phi.name] = t
             del loop_ctx[phi.lhs]
 
         # add new phi names to loop context
         for var in updated:
-            t = self.gensym.fresh(var)
+            t = self.gensym.refresh(var)
             loop_ctx[var] = t
 
         # visit body
@@ -270,8 +295,9 @@ class _SSAInstance(DefaultTransformVisitor):
     def _visit_function(self, func: FunctionDef, ctx: _Ctx):
         ctx = ctx.copy()
         for arg in func.args:
-            self.gensym.reserve(arg.name)
-            ctx[arg.name] = arg.name
+            if isinstance(arg.name, NamedId):
+                self.gensym.reserve(arg.name)
+                ctx[arg.name] = arg.name
 
         body, _ = self._visit_block(func.body, ctx)
         return FunctionDef(func.name, func.args, body, func.ty, func.ctx)

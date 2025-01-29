@@ -2,7 +2,7 @@
 
 from ..ir import *
 
-_CtxType = set[str]
+_CtxType = set[NamedId]
 
 class InvalidIRError(Exception):
     pass
@@ -11,7 +11,7 @@ class InvalidIRError(Exception):
 class _VerifyPassInstance(DefaultVisitor):
     """Single instance of the `VerifyPass`."""
     func: FunctionDef
-    types: dict[str, IRType]
+    types: dict[NamedId, IRType]
 
     def __init__(self, func: FunctionDef):
         self.func = func
@@ -29,18 +29,30 @@ class _VerifyPassInstance(DefaultVisitor):
         for iterable in e.iterables:
             self._visit_expr(iterable, ctx)
         for var in e.vars:
-            if var in self.types:
-                raise InvalidIRError(f'reassignment of variable {var}')
-            self.types[var] = AnyType()
-            ctx.add(var)
+            match var:
+                case NamedId():
+                    if var in self.types:
+                        raise InvalidIRError(f'reassignment of variable {var}')
+                    self.types[var] = AnyType()
+                    ctx.add(var)
+                case UnderscoreId():
+                    pass
+                case _:
+                    raise InvalidIRError('unreachable', var)
         self._visit_expr(e.elt, ctx)
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: _CtxType):
         self._visit_expr(stmt.expr, ctx)
-        if stmt.var in self.types:
-            raise InvalidIRError(f'reassignment of variable {stmt.var}')
-        self.types[stmt.var] = AnyType()
-        ctx.add(stmt.var)
+        match stmt.var:
+            case NamedId():
+                if stmt.var in self.types:
+                    raise InvalidIRError(f'reassignment of variable {stmt.var}')
+                self.types[stmt.var] = AnyType()
+                ctx.add(stmt.var)
+            case UnderscoreId():
+                pass
+            case _:
+                raise InvalidIRError('unreachable', stmt.var)
         return ctx
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: _CtxType):
@@ -127,10 +139,16 @@ class _VerifyPassInstance(DefaultVisitor):
         # check iterable expression
         self._visit_expr(stmt.iterable, ctx)
         # bind the loop variable
-        if stmt.var in self.types:
-            raise InvalidIRError(f'reassignment of variable {stmt.var}')
-        self.types[stmt.var] = AnyType()
-        ctx.add(stmt.var)
+        match stmt.var:
+            case NamedId():
+                if stmt.var in self.types:
+                    raise InvalidIRError(f'reassignment of variable {stmt.var}')
+                self.types[stmt.var] = AnyType()
+                ctx.add(stmt.var)
+            case UnderscoreId():
+                pass
+            case _:
+                raise InvalidIRError('unreachable', stmt.var)
         # check (partial) validity of phi variables and update context
         for phi in stmt.phis:
             name, orig = phi.name, phi.lhs
@@ -154,7 +172,7 @@ class _VerifyPassInstance(DefaultVisitor):
         return ctx
 
     def _visit_context(self, stmt: ContextStmt, ctx: _CtxType):
-        if stmt.name is not None:
+        if stmt.name is not None and isinstance(stmt.name, NamedId):
             if stmt.name in self.types:
                 raise InvalidIRError(f'reassignment of variable {stmt.name}')
             self.types[stmt.name] = AnyType()
@@ -174,8 +192,9 @@ class _VerifyPassInstance(DefaultVisitor):
 
     def _visit_function(self, func: FunctionDef, ctx: _CtxType):
         for arg in func.args:
-            self.types[arg.name] = AnyType()
-            ctx.add(arg.name)
+            if isinstance(arg.name, NamedId):
+                self.types[arg.name] = AnyType()
+                ctx.add(arg.name)
         self._visit_block(func.body, ctx)
 
     # override for typing hint

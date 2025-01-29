@@ -447,9 +447,9 @@ class DefaultTransformVisitor(TransformVisitor):
         return s, ctx
 
     def _copy_tuple_binding(self, binding: TupleBinding):
-        new_vars: list[str | TupleBinding] = []
+        new_vars: list[Id | TupleBinding] = []
         for elt in binding:
-            if isinstance(elt, str):
+            if isinstance(elt, Id):
                 new_vars.append(elt)
             elif isinstance(elt, TupleBinding):
                 new_vars.append(self._copy_tuple_binding(elt))

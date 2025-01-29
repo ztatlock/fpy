@@ -279,7 +279,7 @@ class _Interpreter(ReduceVisitor):
 
     def _apply_comp(
         self,
-        bindings: list[tuple[str, Expr]],
+        bindings: list[tuple[Id, Expr]],
         elt: Expr,
         ctx: EvalCtx,
         elts: list[Any]
@@ -292,7 +292,8 @@ class _Interpreter(ReduceVisitor):
             if not isinstance(array, NDArray):
                 raise TypeError(f'expected a tensor, got {array}')
             for val in array:
-                self._apply_comp(bindings[1:], elt, ctx.let([(var, val)]), elts)
+                elt_ctx = ctx.let([(var, val)]) if isinstance(var, NamedId) else ctx
+                self._apply_comp(bindings[1:], elt, elt_ctx, elts)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: EvalCtx):
         elts: list[Any] = []
@@ -308,15 +309,23 @@ class _Interpreter(ReduceVisitor):
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: EvalCtx):
         val = self._visit_expr(stmt.expr, ctx)
-        return ctx.let([(stmt.var, val)])
+        match stmt.var:
+            case NamedId():
+                return ctx.let([(stmt.var, val)])
+            case UnderscoreId():
+                return ctx
+            case _:
+                raise NotImplementedError('unreachable', stmt.var)
 
     def _unpack_tuple(self, binding: TupleBinding, val: NDArray, ctx: EvalCtx):
         if len(binding.elts) != len(val):
             raise NotImplementedError(f'unpacking {len(val)} values into {len(binding.elts)}')
         for elt, v in zip(binding.elts, val):
             match elt:
-                case str():
+                case NamedId():
                     ctx = ctx.let([(elt, v)])
+                case UnderscoreId():
+                    pass
                 case TupleBinding():
                     ctx = self._unpack_tuple(elt, v, ctx)
                 case _:

@@ -459,6 +459,9 @@ class TupleBinding(Ast):
         super().__init__(loc)
         self.elts = list(vars)
 
+    def __iter__(self):
+        return iter(self.elts)
+
     def names(self) -> set[NamedId]:
         ids: set[NamedId] = set()
         for v in self.elts:
@@ -471,9 +474,6 @@ class TupleBinding(Ast):
             else:
                 raise NotImplementedError('unexpected tuple identifier', v)
         return ids
-    
-    def __iter__(self):
-        return iter(self.elts)
 
 class TupleAssign(Stmt):
     """FPy AST: tuple assignment"""

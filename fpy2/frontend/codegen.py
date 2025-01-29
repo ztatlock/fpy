@@ -88,7 +88,7 @@ class _IRCodegenInstance(AstVisitor):
         return self._visit_function(self.func, None)
 
     def _visit_var(self, e: Var, ctx: None):
-        return ir.Var(str(e.name))
+        return ir.Var(e.name)
 
     def _visit_decnum(self, e: Decnum, ctx: None):
         return ir.Decnum(e.val)
@@ -155,10 +155,9 @@ class _IRCodegenInstance(AstVisitor):
         return ir.TupleExpr(*elts)
 
     def _visit_comp_expr(self, e: CompExpr, ctx: None):
-        vars = [str(var) for var in e.vars]
         iterables = [self._visit_expr(arg, ctx) for arg in e.iterables]
         elt = self._visit_expr(e.elt, ctx)
-        return ir.CompExpr(vars, iterables, elt)
+        return ir.CompExpr(list(e.vars), iterables, elt)
 
     def _visit_ref_expr(self, e: RefExpr, ctx: None):
         value = self._visit_expr(e.value, ctx)
@@ -173,13 +172,13 @@ class _IRCodegenInstance(AstVisitor):
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: None):
         expr = self._visit_expr(stmt.expr, ctx)
-        return ir.VarAssign(str(stmt.var), ir.AnyType(), expr)
+        return ir.VarAssign(stmt.var, ir.AnyType(), expr)
 
     def _visit_tuple_binding(self, vars: TupleBinding):
-        new_vars: list[str | ir.TupleBinding] = []
+        new_vars: list[Id | ir.TupleBinding] = []
         for name in vars:
             if isinstance(name, Id):
-                new_vars.append(str(name))
+                new_vars.append(name)
             elif isinstance(name, TupleBinding):
                 new_vars.append(self._visit_tuple_binding(name))
             else:
@@ -194,7 +193,7 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_ref_assign(self, stmt: RefAssign, ctx: None):
         slices = [self._visit_expr(s, ctx) for s in stmt.slices]
         value = self._visit_expr(stmt.expr, ctx)
-        return ir.RefAssign(str(stmt.var), slices, value)
+        return ir.RefAssign(stmt.var, slices, value)
 
     def _visit_if_stmt(self, stmt: IfStmt, ctx: None):
         cond = self._visit_expr(stmt.cond, ctx)
@@ -213,12 +212,11 @@ class _IRCodegenInstance(AstVisitor):
     def _visit_for_stmt(self, stmt: ForStmt, ctx: None):
         iterable = self._visit_expr(stmt.iterable, ctx)
         body = self._visit_block(stmt.body, ctx)
-        return ir.ForStmt(str(stmt.var), ir.AnyType(), iterable, body, [])
+        return ir.ForStmt(stmt.var, ir.AnyType(), iterable, body, [])
 
     def _visit_context(self, stmt: ContextStmt, ctx: None):
-        name = None if stmt.name is None else str(stmt.name)
         block = self._visit_block(stmt.body, ctx)
-        return ir.ContextStmt(name, stmt.props, block)
+        return ir.ContextStmt(stmt.name, stmt.props, block)
 
     def _visit_return(self, stmt: Return, ctx: None):
         return ir.Return(self._visit_expr(stmt.expr, ctx))
@@ -231,7 +229,7 @@ class _IRCodegenInstance(AstVisitor):
         for arg in func.args:
             # TODO: use type annotation
             ty = ir.AnyType()
-            args.append(ir.Argument(str(arg.name), ty))
+            args.append(ir.Argument(arg.name, ty))
         e = self._visit_block(func.body, ctx)
         return ir.FunctionDef(func.name, args, e, ir.AnyType(), func.ctx)
 
