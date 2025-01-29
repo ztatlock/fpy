@@ -1,4 +1,4 @@
-from fpy2 import fpy, Function, FPCoreCompiler
+from fpy2 import fpy
 from fpy2.typing import *
 
 ### Simple tests
@@ -466,9 +466,8 @@ def whetsone1(n: int):
         x4 = (-x1 + x2 + x3 + x4) * t
     return x1, x2, x3, x4
 
-### Compile loop
 
-cores: list = [
+tests = [
     # Tests
     test_simple1,
     test_simple2,
@@ -518,20 +517,14 @@ cores: list = [
     test_for3,
     test_context1,
     test_context2,
-    test_context3,
-    # Examples
+    test_context3
+]
+
+# Examples
+examples = [
     nmse3_1,
     instCurrent,
     azimuth,
     lod_anisotropic,
     whetsone1
 ]
-
-comp = FPCoreCompiler()
-for core in cores:
-    fn = core
-    assert isinstance(core, Function)
-    args = [1.0 for _ in range(len(core.args))]
-    print(core.name, fn(*args))
-    fpc = comp.compile(core)
-    print(core.format())
