@@ -29,6 +29,8 @@ class _SSAInstance(DefaultTransformVisitor):
         return self._visit_function(self.func, {})
 
     def _visit_var(self, e: Var, ctx: _Ctx):
+        if e.name not in ctx:
+            raise RuntimeError(f'variable {e.name} not found in context {ctx}')
         return Var(ctx[e.name])
 
     def _visit_comp_expr(self, e: CompExpr, ctx: _Ctx):

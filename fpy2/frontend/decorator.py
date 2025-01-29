@@ -57,7 +57,7 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     # add context information
     ast.ctx = { **kwargs }
 
-    print(ast.format())
+    # print(ast.format())
 
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)

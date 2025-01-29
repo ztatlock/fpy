@@ -382,7 +382,7 @@ class FPCoreCompileInstance(ReduceVisitor):
         if len(stmt.phis) != 1:
             raise FPCoreCompileError('while loops must have exactly one phi node')
         phi = stmt.phis[0]
-        name, init, update = phi.name, phi.lhs, phi.rhs
+        name, init, update = str(phi.name), str(phi.lhs), str(phi.rhs)
         cond = self._visit_expr(stmt.cond, None)
         body = self._visit_block(stmt.body, fpc.Var(update))
         return fpc.While(cond, [(name, fpc.Var(init), body)], ctx)
@@ -392,14 +392,14 @@ class FPCoreCompileInstance(ReduceVisitor):
             raise FPCoreCompileError('for loops must have exactly one phi node')
         # phi nodes
         phi = stmt.phis[0]
-        name, init, update = phi.name, phi.lhs, phi.rhs
+        name, init, update = str(phi.name), str(phi.lhs), str(phi.rhs)
         # fresh variable for the iterable value
         tuple_id = str(self.gensym.fresh('t'))
         iterable = self._visit_expr(stmt.iterable, None)
         body = self._visit_block(stmt.body, fpc.Var(update))
         # index variables and state merging
         dim_binding = (str(stmt.var), _size0_expr(tuple_id))
-        while_binding = (str(name), fpc.Var(init), body)
+        while_binding = (name, fpc.Var(init), body)
         return fpc.Let([(tuple_id, iterable)], fpc.For([dim_binding], [while_binding], ctx))
 
     def _visit_context(self, stmt, ctx):

@@ -61,7 +61,6 @@ class SyntaxCheckInstance(AstVisitor):
         if not isinstance(e.name, NamedId):
             raise FPySyntaxError(f'expected a NamedId, got {e.name}')
         if e.name not in env:
-            print(env.env)
             raise FPySyntaxError(f'unbound variable `{e.name}`')
         if not env[e.name]:
             raise FPySyntaxError(f'variable `{e.name}` not defined along all paths')

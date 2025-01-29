@@ -661,7 +661,6 @@ class _FPCore2FPy:
 
 def fpcore_to_fpy(core: fpc.FPCore):
     ast = _FPCore2FPy(core).convert()
-    print(ast.format())
 
     # analyze and lower to the IR
     SyntaxCheck.analyze(ast)

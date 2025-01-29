@@ -27,9 +27,9 @@ class Gensym(object):
                 raise RuntimeError(f'identifier `{ident}` already reserved')
             self._idents.add(ident)
 
-    def fresh(self, prefix: str = 't'):
-        """Generates a unique identifier with a given prefix."""
-        ident = NamedId(prefix)
+    def refresh(self, ident: NamedId):
+        """Generates a unique identifier for an existing identifier."""
+        ident = NamedId(ident.base, ident.count)
         while ident in self._idents:
             ident.count = self._counter
             self._counter += 1
@@ -37,9 +37,9 @@ class Gensym(object):
         self._idents.add(ident)
         return ident
 
-    def refresh(self, ident: NamedId):
-        """Generates a unique identifier for an existing identifier."""
-        return self.fresh(ident.base)
+    def fresh(self, prefix: str = 't'):
+        """Generates a unique identifier with a given prefix."""
+        return self.refresh(NamedId(prefix))
 
     def __contains__(self, name: Id):
         return name in self._idents

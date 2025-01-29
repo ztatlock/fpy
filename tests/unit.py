@@ -532,6 +532,6 @@ for core in cores:
     fn = core
     assert isinstance(core, Function)
     args = [1.0 for _ in range(len(core.args))]
-    print(core, fn(*args))
+    print(core.name, fn(*args))
     fpc = comp.compile(core)
     print(fpc)
