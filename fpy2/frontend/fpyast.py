@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, Self, Sequence
-from ..utils import CompareOp
+from ..utils import CompareOp, Id, NamedId, UnderscoreId
 
 @dataclass
 class Location:
@@ -188,9 +188,9 @@ class ValueExpr(Expr):
 
 class Var(ValueExpr):
     """FPy AST: variable"""
-    name: str
+    name: NamedId
 
-    def __init__(self, name: str, loc: Optional[Location]):
+    def __init__(self, name: NamedId, loc: Optional[Location]):
         super().__init__(loc)
         self.name = name
 
@@ -361,13 +361,13 @@ class TupleExpr(Expr):
 
 class CompExpr(Expr):
     """FPy AST: comprehension expression"""
-    vars: list[str]
+    vars: list[Id]
     iterables: list[Expr]
     elt: Expr
 
     def __init__(
         self,
-        vars: Sequence[str],
+        vars: Sequence[Id],
         iterables: Sequence[Expr],
         elt: Expr,
         loc: Optional[Location]
@@ -431,13 +431,13 @@ class Block(Ast):
 
 class VarAssign(Stmt):
     """FPy AST: variable assignment"""
-    var: str
+    var: Id
     expr: Expr
     ann: Optional[TypeAnn]
 
     def __init__(
         self,
-        var: str,
+        var: Id,
         expr: Expr,
         ann: Optional[TypeAnn],
         loc: Optional[Location]
@@ -449,23 +449,25 @@ class VarAssign(Stmt):
 
 class TupleBinding(Ast):
     """FPy AST: tuple binding"""
-    elts: list[str | Self]
+    elts: list[Id | Self]
 
     def __init__(
         self,
-        vars: Sequence[str | Self],
+        vars: Sequence[Id | Self],
         loc: Optional[Location]
     ):
         super().__init__(loc)
         self.elts = list(vars)
 
-    def names(self) -> set[str]:
-        ids: set[str] = set()
+    def names(self) -> set[NamedId]:
+        ids: set[NamedId] = set()
         for v in self.elts:
-            if isinstance(v, TupleBinding):
-                ids |= v.names()
-            elif isinstance(v, str):
+            if isinstance(v, NamedId):
                 ids.add(v)
+            elif isinstance(v, UnderscoreId):
+                pass
+            elif isinstance(v, TupleBinding):
+                ids |= v.names()
             else:
                 raise NotImplementedError('unexpected tuple identifier', v)
         return ids
@@ -490,13 +492,13 @@ class TupleAssign(Stmt):
 
 class RefAssign(Stmt):
     """FPy AST: assignment to tuple indexing"""
-    var: str
+    var: NamedId
     slices: list[Expr]
     expr: Expr
 
     def __init__(
         self,
-        var: str,
+        var: NamedId,
         slices: Sequence[Expr],
         expr: Expr,
         loc: Optional[Location]
@@ -541,13 +543,13 @@ class WhileStmt(Stmt):
 
 class ForStmt(Stmt):
     """FPy AST: for statement"""
-    var: str
+    var: Id
     iterable: Expr
     body: Block
 
     def __init__(
         self,
-        var: str,
+        var: Id,
         iterable: Expr,
         body: Block,
         loc: Optional[Location]
@@ -559,13 +561,13 @@ class ForStmt(Stmt):
 
 class ContextStmt(Stmt):
     """FPy AST: with statement"""
-    name: Optional[str]
+    name: Optional[Id]
     props: dict[str, Any]
     body: Block
 
     def __init__(
         self,
-        name: Optional[str],
+        name: Optional[Id],
         props: dict[str, Any],
         body: Block,
         loc: Optional[Location]
@@ -589,12 +591,12 @@ class Return(Stmt):
 
 class Argument(Ast):
     """FPy AST: function argument"""
-    name: str
+    name: Id
     type: Optional[TypeAnn]
 
     def __init__(
         self,
-        name: str,
+        name: Id,
         type: Optional[TypeAnn],
         loc: Optional[Location]
     ):
