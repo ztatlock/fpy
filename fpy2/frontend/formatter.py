@@ -31,8 +31,8 @@ class _FormatterInstance(AstVisitor):
     def _add_line(self, line: str, indent: int):
         self.fmt += '    ' * indent + line + '\n'
 
-    def _visit_var(self, e: Var, ctx: _Ctx):
-        return e.name
+    def _visit_var(self, e: Var, ctx: _Ctx) -> str:
+        return str(e.name)
 
     def _visit_decnum(self, e: Decnum, ctx: _Ctx):
         return e.val
@@ -115,7 +115,7 @@ class _FormatterInstance(AstVisitor):
     def _visit_comp_expr(self, e: CompExpr, ctx: _Ctx):
         elt = self._visit_expr(e.elt, ctx)
         iterables = [self._visit_expr(iterable, ctx) for iterable in e.iterables]
-        s = ' '.join(f'for {var} in {iterable}' for var, iterable in zip(e.vars, iterables))
+        s = ' '.join(f'for {str(var)} in {iterable}' for var, iterable in zip(e.vars, iterables))
         return f'[{elt} {s}]'
 
     def _visit_ref_expr(self, e: RefExpr, ctx: _Ctx):
@@ -132,16 +132,19 @@ class _FormatterInstance(AstVisitor):
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: _Ctx):
         val = self._visit_expr(stmt.expr, ctx)
-        self._add_line(f'{stmt.var} = {val}', ctx)
+        self._add_line(f'{str(stmt.var)} = {val}', ctx)
 
-    def _visit_tuple_binding(self, vars: TupleBinding):
+    def _visit_tuple_binding(self, vars: TupleBinding) -> str:
         ss: list[str] = []
         for var in vars:
-            if isinstance(var, str):
-                ss.append(var)
-            else:
-                s = self._visit_tuple_binding(var)
-                ss.append(f'({s})')
+            match var:
+                case Id():
+                    ss.append(str(var))
+                case TupleBinding():
+                    s = self._visit_tuple_binding(var)
+                    ss.append(f'({s})')
+                case _:
+                    raise NotImplementedError('unreachable', var)
         return ', '.join(ss)
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: _Ctx):
@@ -153,7 +156,7 @@ class _FormatterInstance(AstVisitor):
         slices = [self._visit_expr(slice, ctx) for slice in stmt.slices]
         val = self._visit_expr(stmt.expr, ctx)
         ref_str = ''.join(f'[{slice}]' for slice in slices)
-        self._add_line(f'{stmt.var}{ref_str} = {val}', ctx)
+        self._add_line(f'{str(stmt.var)}{ref_str} = {val}', ctx)
 
     def _visit_if_stmt(self, stmt: IfStmt, ctx: _Ctx):
         cond = self._visit_expr(stmt.cond, ctx)
@@ -170,7 +173,7 @@ class _FormatterInstance(AstVisitor):
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _Ctx):
         iterable = self._visit_expr(stmt.iterable, ctx)
-        self._add_line(f'for {stmt.var} in {iterable}:', ctx)
+        self._add_line(f'for {str(stmt.var)} in {iterable}:', ctx)
         self._visit_block(stmt.body, ctx + 1)
 
     def _visit_context(self, stmt: ContextStmt, ctx: _Ctx):
@@ -207,10 +210,7 @@ class _FormatterInstance(AstVisitor):
         else:
             name = func.name
 
-        arg_strs: list[str] = []
-        for arg in func.args:
-            arg_strs.append(arg.name)
-
+        arg_strs = [str(arg.name) for arg in func.args]
         arg_str = ', '.join(arg_strs)
         self._format_decorator(func.ctx, ctx)
         self._add_line(f'def {name}({arg_str}):', ctx)

@@ -9,9 +9,9 @@ from ..utils import FPySyntaxError
 
 class _Env:
     """Bound variables in the current scope."""
-    env: dict[str, bool]
+    env: dict[NamedId, bool]
 
-    def __init__(self, env: Optional[dict[str, bool]] = None):
+    def __init__(self, env: Optional[dict[NamedId, bool]] = None):
         if env is None:
             self.env = {}
         else:
@@ -23,7 +23,7 @@ class _Env:
     def __getitem__(self, key):
         return self.env[key]
 
-    def extend(self, var: str):
+    def extend(self, var: NamedId):
         copy = _Env(self.env)
         copy.env[var] = True
         return copy
@@ -58,7 +58,10 @@ class SyntaxCheckInstance(AstVisitor):
 
     def _visit_var(self, e: Var, ctx: _Ctx):
         env, _ = ctx
+        if not isinstance(e.name, NamedId):
+            raise FPySyntaxError(f'expected a NamedId, got {e.name}')
         if e.name not in env:
+            print(env.env)
             raise FPySyntaxError(f'unbound variable `{e.name}`')
         if not env[e.name]:
             raise FPySyntaxError(f'variable `{e.name}` not defined along all paths')
@@ -135,7 +138,8 @@ class SyntaxCheckInstance(AstVisitor):
         for iterable in e.iterables:
             self._visit_expr(iterable, ctx)
         for var in e.vars:
-            env = env.extend(var)
+            if isinstance(var, NamedId):
+                env = env.extend(var)
         self._visit_expr(e.elt, (env, False))
         return env
 
@@ -156,16 +160,20 @@ class SyntaxCheckInstance(AstVisitor):
     def _visit_var_assign(self, stmt: VarAssign, ctx: _Ctx):
         env, _ = ctx
         self._visit_expr(stmt.expr, ctx)
-        return env.extend(stmt.var)
-    
+        if isinstance(stmt.var, NamedId):
+            env = env.extend(stmt.var)
+        return env
+
     def _visit_tuple_binding(self, binding: TupleBinding, ctx: _Ctx):
         env, _ = ctx
         for elt in binding.elts:
             match elt:
-                case str():
+                case NamedId():
                     env = env.extend(elt)
                 case TupleBinding():
                     env = self._visit_tuple_binding(elt, ctx)
+                case UnderscoreId():
+                    pass
                 case _:
                     raise NotImplementedError('unreachable', elt)
         return env
@@ -202,13 +210,14 @@ class SyntaxCheckInstance(AstVisitor):
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _Ctx):
         env, _ = ctx
         self._visit_expr(stmt.iterable, ctx)
-        env = env.extend(stmt.var)
+        if isinstance(stmt.var, NamedId):
+            env = env.extend(stmt.var)
         body_env = self._visit_block(stmt.body, (env, False))
         return env.merge(body_env)
 
     def _visit_context(self, stmt: ContextStmt, ctx: _Ctx):
         env, is_top = ctx
-        if stmt.name is not None:
+        if stmt.name is not None and isinstance(stmt.name, NamedId):
             env = env.extend(stmt.name)
         return self._visit_block(stmt.body, (env, is_top))
 
@@ -248,7 +257,8 @@ class SyntaxCheckInstance(AstVisitor):
     def _visit_function(self, func: FunctionDef, ctx: _Ctx):
         env, _ = ctx
         for arg in func.args:
-            env = env.extend(arg.name)
+            if isinstance(arg.name, NamedId):
+                env = env.extend(arg.name)
         return self._visit_block(func.body, (env, True))
 
     # override to get typing hint

@@ -5,7 +5,7 @@ Definition analyzer for the FPy AST.
 from .fpyast import *
 from .visitor import AstVisitor
 
-_DefSet = set[str]
+_DefSet = set[NamedId]
 
 class DefinitionAnalysisInstance(AstVisitor):
     """Single-use definition analyzer."""
@@ -70,7 +70,9 @@ class DefinitionAnalysisInstance(AstVisitor):
         raise NotImplementedError('should not be called')
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: _DefSet):
-        return ctx | { stmt.var }
+        if isinstance(stmt.var, NamedId):
+            ctx = ctx | { stmt.var }
+        return ctx
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: _DefSet):
         return ctx | stmt.binding.names()
@@ -91,11 +93,13 @@ class DefinitionAnalysisInstance(AstVisitor):
         return ctx | block_defs
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _DefSet):
+        if isinstance(stmt.var, NamedId):
+            ctx = ctx | { stmt.var }
         block_defs = self._visit_block(stmt.body, ctx)
         return ctx | block_defs
 
     def _visit_context(self, stmt: ContextStmt, ctx: _DefSet):
-        if stmt.name is not None:
+        if stmt.name is not None and isinstance(stmt.name, NamedId):
             ctx = ctx | { stmt.name }
         return self._visit_block(stmt.body, ctx)
 
@@ -113,7 +117,8 @@ class DefinitionAnalysisInstance(AstVisitor):
     def _visit_function(self, func: FunctionDef, ctx: _DefSet):
         ctx = set(ctx)
         for arg in func.args:
-            ctx.add(arg.name)
+            if isinstance(arg.name, NamedId):
+                ctx.add(arg.name)
         self._visit_block(func.body, ctx)
 
     # for typing hint

@@ -3,7 +3,7 @@
 from .fpyast import *
 from .visitor import AstVisitor
 
-_LiveSet = set[str]
+_LiveSet = set[NamedId]
 
 class LiveVarAnalysisInstance(AstVisitor):
     """Single-use live variable analyzer"""
@@ -62,28 +62,28 @@ class LiveVarAnalysisInstance(AstVisitor):
         return live
 
     def _visit_naryop(self, e: NaryOp, ctx: None) -> _LiveSet:
-        live: set[str] = set()
+        live: set[NamedId] = set()
         for arg in e.args:
             live |= self._visit_expr(arg, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
         return live
 
     def _visit_compare(self, e: Compare, ctx: None) -> _LiveSet:
-        live: set[str] = set()
+        live: set[NamedId] = set()
         for arg in e.args:
             live |= self._visit_expr(arg, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
         return live
 
     def _visit_call(self, e: Call, ctx: None) -> _LiveSet:
-        live: set[str] = set()
+        live: set[NamedId] = set()
         for arg in e.args:
             live |= self._visit_expr(arg, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
         return live
 
     def _visit_tuple_expr(self, e: TupleExpr, ctx: None) -> _LiveSet:
-        live: set[str] = set()
+        live: set[NamedId] = set()
         for arg in e.args:
             live |= self._visit_expr(arg, ctx)
         e.attribs[LiveVarAnalysis.analysis_name] = set(live)
@@ -91,7 +91,7 @@ class LiveVarAnalysisInstance(AstVisitor):
 
     def _visit_comp_expr(self, e: CompExpr, ctx: None) -> _LiveSet:
         live = self._visit_expr(e.elt, ctx)
-        live -= set(e.vars)
+        live -= set([var for var in e.vars if isinstance(var, NamedId)])
         for iterable in e.iterables:
             live |= self._visit_expr(iterable, ctx)
         return live
@@ -112,7 +112,8 @@ class LiveVarAnalysisInstance(AstVisitor):
         return live
 
     def _visit_var_assign(self, stmt: VarAssign, ctx: _LiveSet) -> _LiveSet:
-        ctx -= {stmt.var}
+        if isinstance(stmt.var, NamedId):
+            ctx -= { stmt.var }
         return ctx | self._visit_expr(stmt.expr, None)
 
     def _visit_tuple_assign(self, stmt: TupleAssign, ctx: _LiveSet) -> _LiveSet:
@@ -141,13 +142,14 @@ class LiveVarAnalysisInstance(AstVisitor):
 
     def _visit_for_stmt(self, stmt: ForStmt, ctx: _LiveSet) -> _LiveSet:
         ctx |= self._visit_block(stmt.body, set(ctx))
-        ctx -= {stmt.var}
+        if isinstance(stmt.var, NamedId):
+            ctx -= { stmt.var }
         return ctx | self._visit_expr(stmt.iterable, None)
 
     def _visit_context(self, stmt: ContextStmt, ctx: _LiveSet) -> _LiveSet:
         ctx = self._visit_block(stmt.body, set(ctx))
-        if stmt.name is not None:
-            ctx -= {stmt.name}
+        if stmt.name is not None and isinstance(stmt.name, NamedId):
+            ctx -= { stmt.name }
         return ctx
 
     def _visit_return(self, stmt: Return, ctx: _LiveSet) -> _LiveSet:
@@ -173,7 +175,7 @@ class LiveVarAnalysisInstance(AstVisitor):
     # override for typing hint
     def _visit_expr(self, e: Expr, ctx: None) -> _LiveSet:
         return super()._visit_expr(e, ctx)
-    
+
     # override for typing hint
     def _visit_statement(self, stmt: Stmt, ctx: _LiveSet) -> _LiveSet:
         return super()._visit_statement(stmt, ctx)
