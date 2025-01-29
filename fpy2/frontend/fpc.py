@@ -243,7 +243,7 @@ class _FPCore2FPy:
         iff_expr = self._visit(e.else_body, iff_ctx)
 
         # emit temporary to bind result of branches
-        t = NamedId(self.gensym.fresh('t'))
+        t = self.gensym.fresh('t')
         ift_ctx.stmts.append(VarAssign(t, ift_expr, None, None))
         iff_ctx.stmts.append(VarAssign(t, iff_expr, None, None))
 
@@ -262,7 +262,7 @@ class _FPCore2FPy:
             val_ctx = _Ctx(env=env, stmts=ctx.stmts) if is_star else ctx
             v_e = self._visit(val, val_ctx)
             # bind value to variable
-            t = NamedId(self.gensym.fresh(var))
+            t = self.gensym.fresh(var)
             env = { **env, var: t }
             stmt = VarAssign(t, v_e, None, None)
             ctx.stmts.append(stmt)
@@ -276,7 +276,7 @@ class _FPCore2FPy:
             init_ctx = _Ctx(env=env, stmts=ctx.stmts)
             init_e = self._visit(init, init_ctx)
             # bind value to variable
-            t = NamedId(self.gensym.fresh(var))
+            t = self.gensym.fresh(var)
             env = { **env, var: t }
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
@@ -309,7 +309,7 @@ class _FPCore2FPy:
             # compile value
             init_e = self._visit(init, ctx)
             # bind value to variable
-            t = NamedId(self.gensym.fresh(var))
+            t = self.gensym.fresh(var)
             env = { **env, var: t }
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
@@ -326,7 +326,7 @@ class _FPCore2FPy:
             # compile value
             update_e = self._visit(update, update_ctx)
             # bind value to temporary
-            t = NamedId(self.gensym.fresh('t'))
+            t = self.gensym.fresh('t')
             loop_env = { **loop_env, var: t }
             stmt = VarAssign(t, update_e, None, None)
             stmts.append(stmt)
@@ -381,7 +381,7 @@ class _FPCore2FPy:
         # bind iteration bounds to temporaries
         bound_vars: list[NamedId] = []
         for var, val in e.dim_bindings:
-            t = NamedId(self.gensym.fresh('t'))
+            t = self.gensym.fresh('t')
             stmt: Stmt = VarAssign(t, self._visit(val, ctx), None, None)
             ctx.stmts.append(stmt)
             bound_vars.append(t)
@@ -393,13 +393,13 @@ class _FPCore2FPy:
             # compile value
             init_e = self._visit(init, init_ctx)
             # bind value to variable
-            t = NamedId(self.gensym.fresh(var))
+            t = self.gensym.fresh(var)
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
             init_env[var] = t
 
         # initialize tensor
-        tuple_id = NamedId(self.gensym.fresh('t'))
+        tuple_id = self.gensym.fresh('t')
         zeroed = _zeros([Var(var, None) for var in bound_vars])
         stmt = VarAssign(tuple_id, zeroed, None, None)
         ctx.stmts.append(stmt)
@@ -408,7 +408,7 @@ class _FPCore2FPy:
         iter_vars: list[NamedId] = []
         loop_env = init_env.copy()
         for var, _ in e.dim_bindings:
-            iter_id = NamedId(self.gensym.fresh(var))
+            iter_id = self.gensym.fresh(var)
             iter_vars.append(iter_id)
             loop_env[var] = iter_id
 
@@ -446,13 +446,13 @@ class _FPCore2FPy:
         # bind iteration bounds to temporaries
         bound_vars: list[NamedId] = []
         for var, val in e.dim_bindings:
-            t = NamedId(self.gensym.fresh('t'))
+            t = self.gensym.fresh('t')
             stmt: Stmt = VarAssign(t, self._visit(val, ctx), None, None)
             ctx.stmts.append(stmt)
             bound_vars.append(t)
 
         # initialize tensor
-        tuple_id = NamedId(self.gensym.fresh('t'))
+        tuple_id = self.gensym.fresh('t')
         zeroed = _zeros([Var(var, None) for var in bound_vars])
         stmt = VarAssign(tuple_id, zeroed, None, None)
         ctx.stmts.append(stmt)
@@ -461,7 +461,7 @@ class _FPCore2FPy:
         iter_vars: list[NamedId] = []
         loop_env = ctx.env.copy()
         for var, _ in e.dim_bindings:
-            iter_id = NamedId(self.gensym.fresh(var))
+            iter_id = self.gensym.fresh(var)
             iter_vars.append(iter_id)
             loop_env[var] = iter_id
 
@@ -497,7 +497,7 @@ class _FPCore2FPy:
         # bind iteration bounds to temporaries
         bound_vars: list[NamedId] = []
         for var, val in e.dim_bindings:
-            t = NamedId(self.gensym.fresh('t'))
+            t = self.gensym.fresh('t')
             stmt: Stmt = VarAssign(t, self._visit(val, ctx), None, None)
             ctx.stmts.append(stmt)
             bound_vars.append(t)
@@ -509,7 +509,7 @@ class _FPCore2FPy:
             init_ctx = _Ctx(init_env if is_star else ctx.env, ctx.stmts)
             init_e = self._visit(init, init_ctx)
             # bind value to variable
-            t = NamedId(self.gensym.fresh(var))
+            t = self.gensym.fresh(var)
             stmt = VarAssign(t, init_e, None, None)
             ctx.stmts.append(stmt)
             init_env[var] = t
@@ -517,7 +517,7 @@ class _FPCore2FPy:
         # initial iteration variables
         iter_vars: list[NamedId] = []
         for var, _ in e.dim_bindings:
-            iter_id = NamedId(self.gensym.fresh(var))
+            iter_id = self.gensym.fresh(var)
             iter_vars.append(iter_id)
             init_env[var] = iter_id
 
@@ -538,7 +538,7 @@ class _FPCore2FPy:
             update_env = loop_env.copy()
             for var, _, update in e.while_bindings:
                 update_e = self._visit(update, loop_ctx)
-                update_var = NamedId(self.gensym.fresh(var))
+                update_var = self.gensym.fresh(var)
                 stmt = VarAssign(update_var, update_e, None, None)
                 loop_stmts.append(stmt)
                 update_env[var] = update_var
@@ -559,7 +559,7 @@ class _FPCore2FPy:
         val = self._visit(e.body, val_ctx)
 
         # bind value to temporary
-        t = NamedId(self.gensym.fresh('t'))
+        t = self.gensym.fresh('t')
         block = Block(val_ctx.stmts + [VarAssign(t, val, None, None)])
         stmt = ContextStmt(None, dict(e.props), block, None)
         ctx.stmts.append(stmt)
@@ -623,7 +623,7 @@ class _FPCore2FPy:
         args: list[Argument] = []
         for name, arg_props, shape in f.inputs:
             # TODO: argument properties and shape
-            t = NamedId(self.gensym.fresh(name))
+            t = self.gensym.fresh(name)
             arg = Argument(t, None, None)
             args.append(arg)
             ctx.env[name] = t
@@ -632,7 +632,7 @@ class _FPCore2FPy:
                 dim_ids: list[Id] = []
                 for dim in shape:
                     if isinstance(dim, str):
-                        d = NamedId(self.gensym.fresh(dim))
+                        d = self.gensym.fresh(dim)
                         dim_ids.append(d)
                     else:
                         dim_ids.append(UnderscoreId())

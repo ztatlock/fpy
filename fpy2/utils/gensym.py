@@ -41,7 +41,7 @@ class Gensym(object):
         """Generates a unique identifier with a given prefix."""
         return self.refresh(NamedId(prefix))
 
-    def __contains__(self, name: Id):
+    def __contains__(self, name: NamedId):
         return name in self._idents
 
     def __len__(self):

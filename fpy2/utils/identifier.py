@@ -38,6 +38,8 @@ class NamedId(Id):
     count: Optional[int]
 
     def __init__(self, base: str, count: Optional[int] = None):
+        if not isinstance(base, str):
+            raise TypeError(f'expected a str, for {base}')
         self.base = base
         self.count = count
 
