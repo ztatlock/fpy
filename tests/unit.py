@@ -534,4 +534,4 @@ for core in cores:
     args = [1.0 for _ in range(len(core.args))]
     print(core.name, fn(*args))
     fpc = comp.compile(core)
-    print(fpc)
+    print(core.format())

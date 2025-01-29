@@ -2,6 +2,7 @@
 This module contains the intermediate representation (IR).
 """
 
+from abc import abstractmethod
 from typing import Any, Optional, Self, Sequence
 
 from .types import IRType
@@ -18,6 +19,11 @@ class IR:
         name = self.__class__.__name__
         items = ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())
         return f'{name}({items})'
+
+    def format(self) -> str:
+        """Format the AST node as a string."""
+        formatter = get_default_formatter()
+        return formatter.format(self)
 
 class Expr(IR):
     """FPy IR: expression"""
@@ -428,6 +434,7 @@ class TupleExpr(Expr):
         super().__init__()
         self.children = list(children)
 
+# TODO: type annotation for variables
 class CompExpr(Expr):
     """FPy node: comprehension expression"""
     vars: list[Id]
@@ -682,3 +689,27 @@ class FunctionDef(IR):
         self.body = body
         self.ty = ty
         self.ctx = ctx.copy()
+
+
+class BaseFormatter:
+    """Abstract base class for IR formatters."""
+
+    @abstractmethod
+    def format(self, ast: IR) -> str:
+        raise NotImplementedError('virtual method')
+
+_default_formatter: Optional[BaseFormatter] = None
+
+def get_default_formatter() -> BaseFormatter:
+    """Get the default formatter for FPy IRs."""
+    global _default_formatter
+    if _default_formatter is None:
+        raise RuntimeError('no default formatter available')
+    return _default_formatter
+
+def set_default_formatter(formatter: BaseFormatter):
+    """Set the default formatter for FPy IRs."""
+    global _default_formatter
+    if not isinstance(formatter, BaseFormatter):
+        raise TypeError(f'expected BaseFormatter, got {formatter}')
+    _default_formatter = formatter

@@ -35,6 +35,9 @@ class Function:
     def __call__(self, *args, ctx: Optional[EvalCtx] = None):
         rt = get_default_interpreter() if self.rt is None else self.rt
         return rt.eval(self, args, ctx=ctx)
+    
+    def format(self):
+        return self.ir.format()
 
     @property
     def args(self):
