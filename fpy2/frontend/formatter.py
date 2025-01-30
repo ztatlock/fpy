@@ -182,6 +182,13 @@ class _FormatterInstance(AstVisitor):
         self._add_line(f'with Context({props}):', ctx)
         self._visit_block(stmt.body, ctx + 1)
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: _Ctx):
+        test = self._visit_expr(stmt.test, ctx)
+        if stmt.msg is None:
+            self._add_line(f'assert {test}', ctx)
+        else:
+            self._add_line(f'assert {test}, {stmt.msg}', ctx)
+
     def _visit_return(self, stmt: Return, ctx: _Ctx):
         s = self._visit_expr(stmt.expr, ctx)
         self._add_line(f'return {s}', ctx)

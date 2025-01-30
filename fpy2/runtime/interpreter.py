@@ -423,6 +423,14 @@ class _Interpreter(ReduceVisitor):
     def _visit_context(self, stmt: ContextStmt, ctx: EvalCtx):
         return self._visit_block(stmt.body, ctx)
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: EvalCtx):
+        test = self._visit_expr(stmt.test, ctx)
+        if not isinstance(test, bool):
+            raise TypeError(f'expected a boolean, got {test}')
+        if not test:
+            raise AssertionError(stmt.msg)
+        return ctx
+
     def _visit_return(self, stmt: Return, ctx: EvalCtx):
         return self._visit_expr(stmt.expr, ctx)
 

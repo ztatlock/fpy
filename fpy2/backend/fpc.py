@@ -406,6 +406,10 @@ class FPCoreCompileInstance(ReduceVisitor):
         body = self._visit_block(stmt.body, ctx)
         return fpc.Ctx(stmt.props, body)
 
+    def _visit_assert(self, stmt, ctx):
+        # strip the assertion
+        return ctx
+
     def _visit_return(self, stmt, ctx) -> fpc.Expr:
         return self._visit_expr(stmt.expr, ctx)
 

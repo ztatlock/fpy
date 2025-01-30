@@ -130,6 +130,11 @@ class BaseVisitor(ABC):
         raise NotImplementedError('virtual method')
 
     @abstractmethod
+    def _visit_assert(self, stmt: AssertStmt, ctx: Any):
+        """Visitor method for `AssertStmt` nodes."""
+        raise NotImplementedError('virtual method')
+
+    @abstractmethod
     def _visit_return(self, stmt: Return, ctx: Any):
         """Visitor method for `Return` nodes."""
         raise NotImplementedError('virtual method')
@@ -232,6 +237,8 @@ class BaseVisitor(ABC):
                 return self._visit_for_stmt(stmt, ctx)
             case ContextStmt():
                 return self._visit_context(stmt, ctx)
+            case AssertStmt():
+                return self._visit_assert(stmt, ctx)
             case Return():
                 return self._visit_return(stmt, ctx)
             case _:
@@ -340,6 +347,9 @@ class DefaultVisitor(Visitor):
 
     def _visit_context(self, stmt: ContextStmt, ctx: Any):
         self._visit_block(stmt.body, ctx)
+
+    def _visit_assert(self, stmt: AssertStmt, ctx: Any):
+        self._visit_expr(stmt.test, ctx)
 
     def _visit_return(self, stmt: Return, ctx: Any):
         self._visit_expr(stmt.expr, ctx)
@@ -505,6 +515,11 @@ class DefaultTransformVisitor(TransformVisitor):
     def _visit_context(self, stmt: ContextStmt, ctx: Any):
         body, ctx = self._visit_block(stmt.body, ctx)
         s = ContextStmt(stmt.name, stmt.props.copy(), body)
+        return s, ctx
+
+    def _visit_assert(self, stmt: AssertStmt, ctx: Any):
+        test = self._visit_expr(stmt.test, ctx)
+        s = AssertStmt(test, stmt.msg)
         return s, ctx
 
     def _visit_return(self, stmt: Return, ctx: Any):

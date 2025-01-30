@@ -653,9 +653,9 @@ class ContextStmt(Stmt):
 class AssertStmt(Stmt):
     """FPy IR: assert statement"""
     test: Expr
-    msg: Optional[Expr]
+    msg: Optional[str]
 
-    def __init__(self, test: Expr, msg: Optional[Expr]):
+    def __init__(self, test: Expr, msg: Optional[str]):
         super().__init__()
         self.test = test
         self.msg = msg

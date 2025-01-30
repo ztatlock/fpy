@@ -88,6 +88,9 @@ class _ReachingDefsInstance(DefaultVisitor):
         kill_out = kill_in | (defs_in & block_kill)
         return defs_out, kill_out
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: _StmtCtx) -> _RetType:
+        return ctx
+
     def _visit_return(self, stmt: Return, ctx: _StmtCtx) -> _RetType:
         return ctx
 
