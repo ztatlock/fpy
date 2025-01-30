@@ -3,6 +3,7 @@ Decorators for the FPy language.
 """
 
 import inspect
+import textwrap
 
 from typing import Callable, Optional
 from typing import ParamSpec, TypeVar, overload
@@ -29,7 +30,8 @@ def fpy(**kwargs) -> Callable[[Callable[P, R]], Callable[P, R]]:
     ...
 
 def fpy(
-    func: Optional[Callable[P, R]] = None, **kwargs
+    func: Optional[Callable[P, R]] = None,
+    **kwargs
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to parse a Python function into FPy.
@@ -45,13 +47,17 @@ def fpy(
 
 
 def _apply_decorator(func: Callable[P, R], **kwargs):
-    # read the original source of the function
-    sourcename = inspect.getabsfile(func)
-    lines, start_line = inspect.getsourcelines(func)
-    source = ''.join(lines)
+    # read the original source the function
+    src_name = inspect.getabsfile(func)
+    _, start_line = inspect.getsourcelines(func)
+    src = textwrap.dedent(inspect.getsource(func))
+
+    # get defining environment
+    closure_vars = inspect.getclosurevars(func)
+    env = { **closure_vars.globals, **closure_vars.nonlocals }
 
     # parse the source as an FPy function
-    ast = Parser(sourcename, source, start_line).parse()
+    ast = Parser(src_name, src, start_line).parse()
     assert isinstance(ast, FunctionDef), "must be a function"
 
     # add context information

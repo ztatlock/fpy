@@ -119,10 +119,10 @@ class FPyParserError(Exception):
 class Parser:
     """
     FPy parser.
-    
+
     Converts a Python AST (from the `ast` module) to a FPy AST.
     """
-    
+
     name: str
     source: str
     lines: list[str]
