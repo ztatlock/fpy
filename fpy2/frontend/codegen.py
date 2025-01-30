@@ -218,6 +218,10 @@ class _IRCodegenInstance(AstVisitor):
         block = self._visit_block(stmt.body, ctx)
         return ir.ContextStmt(stmt.name, stmt.props, block)
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: None):
+        test = self._visit_expr(stmt.test, ctx)
+        return ir.AssertStmt(test, stmt.msg)
+
     def _visit_return(self, stmt: Return, ctx: None):
         return ir.Return(self._visit_expr(stmt.expr, ctx))
 

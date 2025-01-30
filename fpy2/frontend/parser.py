@@ -554,6 +554,11 @@ class Parser:
                 props = self._parse_contextexpr(item)
                 block = self._parse_statements(stmt.body)
                 return ContextStmt(name, props, block, loc)
+            case ast.Assert():
+                test = self._parse_expr(stmt.test)
+                if stmt.msg is not None:
+                    raise FPyParserError(loc, 'FPy does not support assert messages', stmt)
+                return AssertStmt(test, None, loc)
             case _:
                 raise NotImplementedError('statement is unsupported in FPy', stmt)
 

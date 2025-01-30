@@ -650,6 +650,16 @@ class ContextStmt(Stmt):
         self.props = props.copy()
         self.body = body
 
+class AssertStmt(Stmt):
+    """FPy IR: assert statement"""
+    test: Expr
+    msg: Optional[Expr]
+
+    def __init__(self, test: Expr, msg: Optional[Expr]):
+        super().__init__()
+        self.test = test
+        self.msg = msg
+
 class Return(Stmt):
     """FPy IR: return statement"""
     expr: Expr

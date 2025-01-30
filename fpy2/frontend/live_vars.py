@@ -152,6 +152,9 @@ class LiveVarAnalysisInstance(AstVisitor):
             ctx -= { stmt.name }
         return ctx
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: _LiveSet) -> _LiveSet:
+        return ctx | self._visit_expr(stmt.test, None)
+
     def _visit_return(self, stmt: Return, ctx: _LiveSet) -> _LiveSet:
         return self._visit_expr(stmt.expr, None)
 

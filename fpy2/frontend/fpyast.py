@@ -577,6 +577,21 @@ class ContextStmt(Stmt):
         self.name = name
         self.body = body
 
+class AssertStmt(Stmt):
+    """FPy AST: assert statement"""
+    test: Expr
+    msg: Optional[str]
+
+    def __init__(
+        self,
+        test: Expr,
+        msg: Optional[str],
+        loc: Optional[Location]
+    ):
+        super().__init__(loc)
+        self.test = test
+        self.msg = msg
+
 class Return(Stmt):
     """FPy AST: return statement"""
     expr: Expr

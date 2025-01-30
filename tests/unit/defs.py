@@ -356,6 +356,11 @@ def test_context3(x: Real, y: Real):
             t1 = x - y
         return t0 - t1
 
+@fpy(name='Test assertion (1/1)')
+def test_assert():
+    assert 0 == 0
+    return 0
+
 ### Examples
 
 @fpy(
@@ -517,7 +522,8 @@ tests = [
     test_for3,
     test_context1,
     test_context2,
-    test_context3
+    test_context3,
+    test_assert,
 ]
 
 # Examples

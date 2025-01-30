@@ -103,6 +103,9 @@ class DefinitionAnalysisInstance(AstVisitor):
             ctx = ctx | { stmt.name }
         return self._visit_block(stmt.body, ctx)
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: _DefSet):
+        return ctx
+
     def _visit_return(self, stmt: Return, ctx: _DefSet):
         return set(ctx)
 

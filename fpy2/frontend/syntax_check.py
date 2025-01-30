@@ -220,6 +220,11 @@ class SyntaxCheckInstance(AstVisitor):
             env = env.extend(stmt.name)
         return self._visit_block(stmt.body, (env, is_top))
 
+    def _visit_assert(self, stmt: AssertStmt, ctx: _Ctx):
+        env, _ = ctx
+        self._visit_expr(stmt.test, ctx)
+        return env
+
     def _visit_return(self, stmt: Return, ctx: _Ctx):
         return self._visit_expr(stmt.expr, ctx)
 
@@ -227,20 +232,6 @@ class SyntaxCheckInstance(AstVisitor):
         env, is_top = ctx
         for i, stmt in enumerate(block.stmts):
             match stmt:
-                case VarAssign():
-                    env = self._visit_statement(stmt, (env, False))
-                case TupleAssign():
-                    env = self._visit_statement(stmt, (env, False))
-                case RefAssign():
-                    env = self._visit_statement(stmt, (env, False))
-                case IfStmt():
-                    env = self._visit_statement(stmt, (env, False))
-                case WhileStmt():
-                    env = self._visit_statement(stmt, (env, False))
-                case ForStmt():
-                    env = self._visit_statement(stmt, (env, False))
-                case ContextStmt():
-                    env = self._visit_statement(stmt, (env, is_top))
                 case Return():
                     if not is_top:
                         raise FPySyntaxError('return statement must be at the top-level')
@@ -248,8 +239,10 @@ class SyntaxCheckInstance(AstVisitor):
                         raise FPySyntaxError('return statement must be at the end of the function definition')
                     env = self._visit_statement(stmt, (env, False))
                     self.rets.add(stmt)
+                case ContextStmt():
+                    env = self._visit_statement(stmt, (env, is_top))
                 case _:
-                    raise NotImplementedError('unreachable', stmt)
+                    env = self._visit_statement(stmt, (env, False))
 
         return env
 
