@@ -421,6 +421,7 @@ class _Interpreter(ReduceVisitor):
         return ctx
 
     def _visit_context(self, stmt: ContextStmt, ctx: EvalCtx):
+        ctx = ctx.let(props=stmt.props)
         return self._visit_block(stmt.body, ctx)
 
     def _visit_assert(self, stmt: AssertStmt, ctx: EvalCtx):
