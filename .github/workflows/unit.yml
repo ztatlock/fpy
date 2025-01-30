@@ -2,6 +2,9 @@ name: Build and check
 
 on: [push]
 
+env:
+  FPBENCH: ~/fpbench
+
 jobs:
   build:
     name: "Build"
@@ -56,10 +59,15 @@ jobs:
         run: ruff check
 
   unit:
-    name: "Unit Testing"
+    name: "Unit Tests"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: "Checkout fpbench/fpbench"
+        uses: actions/checkout@v4
+        with:
+          repository: fpbench/fpbench
+          path: $FPBENCH
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
