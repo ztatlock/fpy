@@ -16,7 +16,7 @@ from .parser import Parser
 from .syntax_check import SyntaxCheck
 
 from ..passes import SSA, VerifyIR
-from ..runtime import Function
+from ..runtime import Function, PythonEnv
 
 P = ParamSpec('P')
 R = TypeVar('R')
@@ -45,6 +45,17 @@ def fpy(
     else:
         return _apply_decorator(func, **kwargs)
 
+def _function_env(func: Callable) -> PythonEnv:
+    globs = func.__globals__
+    if func.__closure__ is None:
+        nonlocals = {}
+    else:
+        nonlocals = {
+            v: c for v, c in
+            zip(func.__code__.co_freevars, func.__closure__)
+        }
+
+    return PythonEnv(globs, nonlocals)
 
 def _apply_decorator(func: Callable[P, R], **kwargs):
     # read the original source the function
@@ -53,8 +64,9 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     src = textwrap.dedent(inspect.getsource(func))
 
     # get defining environment
-    closure_vars = inspect.getclosurevars(func)
-    env = { **closure_vars.globals, **closure_vars.nonlocals }
+    cvars = inspect.getclosurevars(func)
+    fvs = cvars.nonlocals.keys() | cvars.globals.keys()
+    env = _function_env(func)
 
     # parse the source as an FPy function
     ast = Parser(src_name, src, start_line).parse()
@@ -62,6 +74,7 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
 
     # add context information
     ast.ctx = { **kwargs }
+    ast.fvs = fvs
 
     # print(ast.format())
 
@@ -74,4 +87,4 @@ def _apply_decorator(func: Callable[P, R], **kwargs):
     VerifyIR.check(ir)
 
     # wrap the IR in a Function
-    return Function(ir, func.__globals__)
+    return Function(ir, env)
