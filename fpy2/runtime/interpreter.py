@@ -85,10 +85,6 @@ _method_table: dict[str, Callable[..., Any]] = {
 
 class _Interpreter(ReduceVisitor):
     """Single-use interpreter"""
-    env: dict[str, Any]
-
-    def __init__(self, env: dict[str, Any]):
-        self.env = env
 
     # TODO: what are the semantics of arguments
     def _arg_to_mpmf(self, arg: Any, ctx: EvalCtx):
@@ -475,4 +471,4 @@ class Interpreter(BaseInterpreter):
     ):
         if not isinstance(func, Function):
             raise TypeError(f'Expected Function, got {func}')
-        return _Interpreter(func.env).eval(func.ir, args, ctx)
+        return _Interpreter().eval(func.ir, args, ctx)
